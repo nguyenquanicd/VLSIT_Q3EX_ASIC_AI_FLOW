@@ -1,0 +1,172 @@
+    {
+    "Project": "APB-CSR-Generator",
+    "Module": "JSON debug file",
+    "Function": "Used to check the configuration after generation",
+    "Author": "Trthinh (Ethan)",
+    "Generator": "VLSIT - Q3TUI",
+    "Page": "VLSI Technology", 
+    "Table - Configuration": [
+    {
+        "Module Name": "m_soc_csr",
+        "Address Width": "16",
+        "Data Width": "32",
+        "Protocol": "APB",
+        "Asynchornous": "0"
+    }
+    ],
+    "Table - Register Definition": [
+        {
+        "Register Name": "ctrl",
+        "Offset": "0x0000",
+        "Reset Value": "0x0",
+        "Descriprtion": "Control register",
+        "Bits": [
+            {
+                "Bit Name": "reserved",
+                "Bit Type": "ro",
+                "Bit Field": "[31:1]",
+                "Reset Value": "0x0",
+                "Description": "Reserved. Read-as-zero, write ignored."
+            },
+            {
+                "Bit Name": "start",
+                "Bit Type": "rwi",
+                "Bit Field": "[0]",
+                "Reset Value": "0x0",
+                "Description": "Start inference; set by i_start_req (hardware write) or firmware, cleared by firmware"
+            }
+          ]
+        },
+        {
+        "Register Name": "sts",
+        "Offset": "0x0004",
+        "Reset Value": "0x0",
+        "Descriprtion": "Status register",
+        "Bits": [
+            {
+                "Bit Name": "reserved",
+                "Bit Type": "ro",
+                "Bit Field": "[31:3]",
+                "Reset Value": "0x0",
+                "Description": "Reserved. Read-as-zero, write ignored."
+            },
+            {
+                "Bit Name": "err",
+                "Bit Type": "w1c",
+                "Bit Field": "[2]",
+                "Reset Value": "0x0",
+                "Description": "Error flag; set by an illegal instruction or the PSLVERR pulse, cleared by writing 1"
+            },
+            {
+                "Bit Name": "done",
+                "Bit Type": "rw",
+                "Bit Field": "[1]",
+                "Reset Value": "0x0",
+                "Description": "Inference done; set by firmware, drives o_sts_done"
+            },
+            {
+                "Bit Name": "busy",
+                "Bit Type": "rw",
+                "Bit Field": "[0]",
+                "Reset Value": "0x0",
+                "Description": "Inference running; set and cleared by firmware"
+            }
+          ]
+        },
+        {
+        "Register Name": "result",
+        "Offset": "0x0008",
+        "Reset Value": "0x0",
+        "Descriprtion": "Inference result",
+        "Bits": [
+            {
+                "Bit Name": "reserved",
+                "Bit Type": "ro",
+                "Bit Field": "[31:4]",
+                "Reset Value": "0x0",
+                "Description": "Reserved. Read-as-zero, write ignored."
+            },
+            {
+                "Bit Name": "label",
+                "Bit Type": "rw",
+                "Bit Field": "[3:0]",
+                "Reset Value": "0x0",
+                "Description": "Predicted digit 0-9, written by firmware, drives o_result_label"
+            }
+          ]
+        },
+        {
+        "Register Name": "cycles",
+        "Offset": "0x000C",
+        "Reset Value": "0x0",
+        "Descriprtion": "Cycle counter",
+        "Bits": [
+            {
+                "Bit Name": "cnt",
+                "Bit Type": "ro",
+                "Bit Field": "[31:0]",
+                "Reset Value": "0x0",
+                "Description": "Cycles from vector-instruction start to done, driven by m_vpu_perf"
+            }
+          ]
+        },
+        {
+        "Register Name": "uart_tx",
+        "Offset": "0x0010",
+        "Reset Value": "0x0",
+        "Descriprtion": "UART transmit control",
+        "Bits": [
+            {
+                "Bit Name": "reserved",
+                "Bit Type": "ro",
+                "Bit Field": "[31:10]",
+                "Reset Value": "0x0",
+                "Description": "Reserved. Read-as-zero, write ignored."
+            },
+            {
+                "Bit Name": "busy",
+                "Bit Type": "ro",
+                "Bit Field": "[9]",
+                "Reset Value": "0x0",
+                "Description": "1 while a byte is being transmitted"
+            },
+            {
+                "Bit Name": "send",
+                "Bit Type": "rwi",
+                "Bit Field": "[8]",
+                "Reset Value": "0x0",
+                "Description": "Write 1 to send; m_uart clears it when it takes the byte"
+            },
+            {
+                "Bit Name": "data",
+                "Bit Type": "rw",
+                "Bit Field": "[7:0]",
+                "Reset Value": "0x0",
+                "Description": "Byte to transmit"
+            }
+          ]
+        },
+        {
+        "Register Name": "uart_cfg",
+        "Offset": "0x0014",
+        "Reset Value": "0x6c8",
+        "Descriprtion": "UART configuration",
+        "Bits": [
+            {
+                "Bit Name": "reserved",
+                "Bit Type": "ro",
+                "Bit Field": "[31:16]",
+                "Reset Value": "0x0",
+                "Description": "Reserved. Read-as-zero, write ignored."
+            },
+            {
+                "Bit Name": "baud_div",
+                "Bit Type": "rw",
+                "Bit Field": "[15:0]",
+                "Reset Value": "0x6c8",
+                "Description": "Baud divisor in i_clk_core cycles per bit; provisional reset 0x06C8 (115200 baud at 200 MHz)"
+            }
+          ]
+        }
+    ]
+}

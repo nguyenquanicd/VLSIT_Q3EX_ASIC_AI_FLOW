@@ -1,0 +1,121 @@
+{
+  "behaviours": [
+    {
+      "id": "S1",
+      "description": "Reset values: o_halt, o_err_illegal, o_sts_done and o_result_label are 0; o_uart_tx is 1.",
+      "req_ids": [
+        "REQ-027",
+        "REQ-041"
+      ]
+    },
+    {
+      "id": "S2",
+      "description": "Host port: DMEM byte-masked write, read-back 1 cycle later, back-to-back reads, IMEM read returns 0, MMIO and unmapped reads return 0, MMIO and unmapped writes change nothing.",
+      "req_ids": [
+        "REQ-019",
+        "REQ-020",
+        "REQ-021",
+        "REQ-022",
+        "REQ-042"
+      ]
+    },
+    {
+      "id": "S3",
+      "description": "Scalar program with MMIO sw/lw, load-use and ebreak: label, sts.done and halt without o_err_illegal.",
+      "req_ids": [
+        "REQ-001",
+        "REQ-003",
+        "REQ-015",
+        "REQ-016",
+        "REQ-029",
+        "REQ-053",
+        "REQ-073"
+      ]
+    },
+    {
+      "id": "S4",
+      "description": "mul result and a taken branch that skips an instruction.",
+      "req_ids": [
+        "REQ-002",
+        "REQ-003"
+      ]
+    },
+    {
+      "id": "S5",
+      "description": "Reset clears outputs while DMEM contents are kept.",
+      "req_ids": [
+        "REQ-042",
+        "REQ-044",
+        "REQ-041"
+      ]
+    },
+    {
+      "id": "S6",
+      "description": "Illegal instruction (div) halts the core and sets o_err_illegal; the following instruction does not execute.",
+      "req_ids": [
+        "REQ-002",
+        "REQ-052",
+        "REQ-053"
+      ]
+    },
+    {
+      "id": "S7",
+      "description": "sb to MMIO gives PSLVERR and sets sts.err, with no halt and a normal ack.",
+      "req_ids": [
+        "REQ-016",
+        "REQ-017",
+        "REQ-055",
+        "REQ-056"
+      ]
+    },
+    {
+      "id": "S8",
+      "description": "UART 8N1 frame of 0xA3 at baud_div = 8: start bit, data LSB first, stop bit.",
+      "req_ids": [
+        "REQ-012",
+        "REQ-063"
+      ]
+    },
+    {
+      "id": "S9",
+      "description": "VPU smoke: vsetivli (vl = 4), vmv.v.x, vmv.x.s, vle32, vse32 with results checked through the label and the DMEM read-back.",
+      "req_ids": [
+        "REQ-004",
+        "REQ-005",
+        "REQ-008",
+        "REQ-009"
+      ]
+    },
+    {
+      "id": "S10",
+      "description": "i_ld_en was never 1 while i_rst_n_core was 1 (assertion, REQ-IF-009 / SVA-001).",
+      "req_ids": [
+        "REQ-023"
+      ]
+    },
+    {
+      "id": "S11",
+      "description": "New: an illegal instruction (div) and an ebreak in the wrong-path shadow of a taken beq do not halt the core and do not set sts.err or o_err_illegal. The program reaches the target, reads sts.err as 0 and writes label 5.",
+      "req_ids": [
+        "REQ-084",
+        "REQ-052"
+      ]
+    },
+    {
+      "id": "S12",
+      "description": "New: a store and a load at the unimplemented MMIO offset 0x40 read 0, do not hang or halt, and leave defined registers working (label 3).",
+      "req_ids": [
+        "REQ-086"
+      ]
+    },
+    {
+      "id": "S13",
+      "description": "New: after a vsetivli, cycles.cnt (offset 0x0C) is at least 5, the minimum 6-state ctrl latency. The label is 1 if cnt >= 5.",
+      "req_ids": [
+        "REQ-087",
+        "REQ-013"
+      ]
+    }
+  ],
+  "summary": "Kept the existing testbench and added three behaviours for the new requirements: S11 for REQ-084, S12 for REQ-086 and S13 for REQ-087. REQ-085 is not tested, because its read data and `sts.err` are unspecified. The REQ-008, REQ-054, REQ-058, REQ-062, REQ-074 and REQ-075 changes need deeper vector or misaligned-access tests than a smoke test. `smoke_run` passes all 13 behaviours."
+}

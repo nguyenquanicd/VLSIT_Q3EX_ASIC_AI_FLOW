@@ -1,0 +1,988 @@
+{
+  "metadata": {
+    "ip_name": "rv32_vpu_mnist",
+    "phase": 4,
+    "gate_4_approved": true,
+    "gate_4_at": "2026-10-31T20:32:49"
+  },
+  "test_cases": [
+    {
+      "tc_id": "TC-001",
+      "name": "reset_values",
+      "title": "reset_values",
+      "description": "Hold reset, then release: check o_halt=0, o_err_illegal=0, o_uart_tx=1, o_sts_done=0, o_result_label=0 (registered level outputs) during and after reset, and that the first executed instruction is fetched from PC 0x0 with all FSMs idle (program at address 0 writes a marker to DMEM, read back via host; first vector/MMIO/UART operations start normally).",
+      "req_ids": [
+        "REQ-041",
+        "REQ-027"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_001_reset_values.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-002",
+      "name": "reset_async_assert_sync_release",
+      "title": "reset_async_assert_sync_release",
+      "description": "Assert i_rst_n_core asynchronously between clock edges while a program runs (outputs return to reset values without waiting for a clock edge, no further DMEM writes) and release it away from the clock edge (no output changes between edges; core starts only after release, within a bounded number of cycles).",
+      "req_ids": [
+        "REQ-040",
+        "REQ-027"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_002_reset_async_assert_sync_release.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-003",
+      "name": "reset_during_activity_abort",
+      "title": "reset_during_activity_abort",
+      "description": "Apply reset in the middle of a vector instruction, an MMIO/APB transfer, a UART frame and a running inference: all control state, CSR values (o_sts_done, o_result_label, ctrl/sts/cycles) and o_uart_tx return to reset values, DMEM/IMEM contents are kept, and the program re-runs correctly from PC 0.",
+      "req_ids": [
+        "REQ-044",
+        "REQ-042",
+        "REQ-041"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_003_reset_during_activity_abort.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-004",
+      "name": "reset_keeps_memories_host_active",
+      "title": "reset_keeps_memories_host_active",
+      "description": "While reset is asserted, write IMEM/DMEM through the host port (host port not gated by reset), pulse reset repeatedly and read DMEM back: contents are never cleared, host reads still work during reset, the CPU does not alter memories while in reset.",
+      "req_ids": [
+        "REQ-042",
+        "REQ-021"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_004_reset_keeps_memories_host_active.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-005",
+      "name": "reset_recovers_from_halt",
+      "title": "reset_recovers_from_halt",
+      "description": "After an illegal instruction and after ebreak halt the core, apply reset: o_halt, o_err_illegal and sts.err return to 0 and a new program runs normally.",
+      "req_ids": [
+        "REQ-041",
+        "REQ-052",
+        "REQ-053"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_005_reset_recovers_from_halt.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-006",
+      "name": "rv32i_alu_ops",
+      "title": "rv32i_alu_ops",
+      "description": "Directed and random programs exercising all RV32I register/immediate ALU ops, shifts, slt/sltu, lui, auipc with corner operands; results stored to DMEM and compared with a TB reference.",
+      "req_ids": [
+        "REQ-001"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_006_rv32i_alu_ops.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-007",
+      "name": "branches_and_jumps",
+      "title": "branches_and_jumps",
+      "description": "All six branch types taken/not-taken, forward/backward loops, jal/jalr with link values: correct targets, link data, and instructions in the shadow of a taken branch/jump are flushed (no side effects).",
+      "req_ids": [
+        "REQ-001",
+        "REQ-003"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_007_branches_and_jumps.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-008",
+      "name": "load_store_aligned",
+      "title": "load_store_aligned",
+      "description": "lb lh lw lbu lhu sb sh sw at aligned addresses over all four lanes of DMEM rows: sign/zero extension, partial stores change only the addressed bytes (verified via host DMEM reads).",
+      "req_ids": [
+        "REQ-001",
+        "REQ-011",
+        "REQ-015"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_008_load_store_aligned.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-009",
+      "name": "load_store_misaligned_no_trap",
+      "title": "load_store_misaligned_no_trap",
+      "description": "Misaligned lh/lhu/lw/sh/sw to DMEM at addr[1:0] != 0: no halt/error; stores use byte enables and data shifted by addr[1:0] with bytes outside the word dropped and no word-crossing split (neighbouring word unchanged); loads return word >> (8*addr[1:0]) with missing upper bytes zero-filled, then the normal sign/zero extension of the access width.",
+      "req_ids": [
+        "REQ-075",
+        "REQ-001"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_009_load_store_misaligned_no_trap.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-010",
+      "name": "mul_zmmul",
+      "title": "mul_zmmul",
+      "description": "mul with signed/unsigned corner operands (0, 1, -1, INT_MIN, INT_MAX, random), rd=x0: result equals low 32 bits of the signed product.",
+      "req_ids": [
+        "REQ-002"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_010_mul_zmmul.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-011",
+      "name": "illegal_scalar_div_mulh",
+      "title": "illegal_scalar_div_mulh",
+      "description": "For each of div, divu, rem, remu, mulh, mulhsu, mulhu and unknown/all-zero/all-one opcodes (one program per reset): o_halt=1, o_err_illegal=1, sts.err set, older instructions complete, younger instructions have no effect, PC stops and o_halt stays 1.",
+      "req_ids": [
+        "REQ-002",
+        "REQ-052",
+        "REQ-053"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_011_illegal_scalar_div_mulh.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-012",
+      "name": "forwarding_and_regfile_bypass",
+      "title": "forwarding_and_regfile_bypass",
+      "description": "Back-to-back dependent chains covering EX/MEM->EX and MEM/WB->EX forwarding, same-cycle WB->read bypass at both read ports, store-data forwarding, and x0 always reading 0 (writes to x0 ignored, incl. load/jal rd=x0).",
+      "req_ids": [
+        "REQ-003",
+        "REQ-001",
+        "REQ-035",
+        "REQ-076"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_012_forwarding_and_regfile_bypass.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-013",
+      "name": "pipeline_timing_differential",
+      "title": "pipeline_timing_differential",
+      "description": "Using time-to-o_halt of small programs: N independent instructions add exactly N cycles (1 instr/cycle); a load followed by an immediate use costs exactly 1 bubble (same halt time as load + independent instruction + use); branch not-taken adds no stall; taken-branch penalty and dot-product iteration length are logged for information only.",
+      "req_ids": [
+        "REQ-001",
+        "REQ-003",
+        "REQ-011"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_013_pipeline_timing_differential.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-014",
+      "name": "illegal_in_wrong_path_not_halting",
+      "title": "illegal_in_wrong_path_not_halting",
+      "description": "An illegal instruction and an ebreak placed in the shadow of a taken branch/jump (flushed before commit) have no effect: o_halt and o_err_illegal stay 0 and sts.err stays 0 (read via lw), execution continues at the target; the same instructions on the correct path do halt.",
+      "req_ids": [
+        "REQ-084",
+        "REQ-052",
+        "REQ-073",
+        "REQ-003"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_014_illegal_in_wrong_path_not_halting.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-015",
+      "name": "ebreak_halt_fence_nop",
+      "title": "ebreak_halt_fence_nop",
+      "description": "ebreak: o_halt=1, o_err_illegal=0, sts.err not set, PC stops, o_halt stays 1, older instructions complete; fence executes as NOP with no stall or side effect.",
+      "req_ids": [
+        "REQ-073",
+        "REQ-053"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_015_ebreak_halt_fence_nop.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-016",
+      "name": "illegal_system_opcodes",
+      "title": "illegal_system_opcodes",
+      "description": "ecall, csrrw/csrrs/csrrc(+immediate forms), mret/wfi and other SYSTEM opcodes each halt with o_halt=1, o_err_illegal=1, sts.err set; outputs sticky until reset and change only at clock edges (registered level outputs).",
+      "req_ids": [
+        "REQ-073",
+        "REQ-052",
+        "REQ-053",
+        "REQ-027"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_016_illegal_system_opcodes.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-017",
+      "name": "imem_range_data_access_unmapped",
+      "title": "imem_range_data_access_unmapped",
+      "description": "CPU loads/stores to 0x0000_0000..0x0000_7FFF: loads return 0, stores are ignored (code at the target still executes unchanged), no o_halt/o_err_illegal and sts.err stays 0.",
+      "req_ids": [
+        "REQ-057",
+        "REQ-015"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_017_imem_range_data_access_unmapped.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-018",
+      "name": "unmapped_cpu_addresses",
+      "title": "unmapped_cpu_addresses",
+      "description": "CPU accesses at 0x0000_8000, 0x1004_0000, 0x2000_1000, 0x3000_0000, 0xFFFF_FFFC: reads return 0, writes ignored (DMEM/IMEM/CSR unchanged, no aliasing onto DMEM base), no error flag.",
+      "req_ids": [
+        "REQ-015",
+        "REQ-057"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_018_unmapped_cpu_addresses.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-019",
+      "name": "imem_depth_and_fetch",
+      "title": "imem_depth_and_fetch",
+      "description": "Host-load code at word 0, word 8191 (0x7FFC) and random words; execute across boundaries and jump to/from the last word: all 32 KB fetchable with 1-cycle synchronous read and no aliasing between distant addresses.",
+      "req_ids": [
+        "REQ-010",
+        "REQ-019"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_019_imem_depth_and_fetch.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-020",
+      "name": "dmem_depth_and_row_map",
+      "title": "dmem_depth_and_row_map",
+      "description": "Write distinct patterns to first/last/random DMEM rows via host and CPU, read via CPU and host: 256 KB reachable, no aliasing, lane i of row r at address 0x1000_0000 + 16*r + 4*i, byte-enable stores change only selected bytes, read data valid the cycle after the request.",
+      "req_ids": [
+        "REQ-011",
+        "REQ-015",
+        "REQ-020",
+        "REQ-051"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_020_dmem_depth_and_row_map.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-021",
+      "name": "vsetvli_vl_computation",
+      "title": "vsetvli_vl_computation",
+      "description": "vsetvli/vsetivli for SEW 8/16/32 with AVL 0,1,VLMAX-1,VLMAX,VLMAX+1,1030 and AVL strip-mining loop (16,...,6 at SEW 8): rd returns min(AVL,VLMAX) with VLMAX=16/8/4, vl never exceeds PARA_VLEN/8 (vl width covers 16); rs1=x0 forms.",
+      "req_ids": [
+        "REQ-004",
+        "REQ-051"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_021_vsetvli_vl_computation.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-022",
+      "name": "vsetvli_zero_zero_keeps_vl",
+      "title": "vsetvli_zero_zero_keeps_vl",
+      "description": "vsetvli zero,zero with a legal new SEW keeps vl (observed through vse element count) and changes SEW (observed through vadd/vse behaviour), with no VLMAX-preservation check (vl=16 at SEW 8 stays 16 after switching to SEW 32).",
+      "req_ids": [
+        "REQ-077",
+        "REQ-004"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_022_vsetvli_zero_zero_keeps_vl.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-023",
+      "name": "vle_vse_unit_stride",
+      "title": "vle_vse_unit_stride",
+      "description": "vle8/vse8/vle32/vse32 at row-aligned DMEM addresses with vl = 0,1,odd,max: exactly vl elements are loaded/stored, vector register tail elements and non-written memory bytes stay unchanged (byte-enable), checked through host reads; probe checks o_mem_req held stable until i_mem_ack and ack arrives at least 1 cycle after o_mem_req rises.",
+      "req_ids": [
+        "REQ-005",
+        "REQ-011",
+        "REQ-059",
+        "REQ-033",
+        "REQ-079"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_023_vle_vse_unit_stride.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-024",
+      "name": "vle_vse_unaligned_address",
+      "title": "vle_vse_unaligned_address",
+      "description": "Vector loads/stores at row+1..row+15: the low log2(PARA_VLEN/8) address bits are ignored and the aligned row is accessed (checked through memory contents), no halt/error flag; only the row part of o_mem_addr is checked as significant, the ignored low bits (driven unmodified or cleared) are not checked.",
+      "req_ids": [
+        "REQ-058",
+        "REQ-033",
+        "REQ-005"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_024_vle_vse_unaligned_address.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-025",
+      "name": "vpu_access_outside_dmem",
+      "title": "vpu_access_outside_dmem",
+      "description": "vle/vse addressing IMEM range, MMIO, and unmapped regions: access completes immediately without hang, load yields zeros in vd, store is ignored (IMEM/CSR/DMEM unchanged), no error flag.",
+      "req_ids": [
+        "REQ-082",
+        "REQ-015"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_025_vpu_access_outside_dmem.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-026",
+      "name": "vwmul_vv",
+      "title": "vwmul_vv",
+      "description": "vwmul.vv at SEW=8 with directed (-128*-128=16384, -128*127, 0, 1, -1) and random inputs, vl 1..16: INT16 results across register pair vd/vd+1 equal reference; tail and other registers unchanged.",
+      "req_ids": [
+        "REQ-006",
+        "REQ-059"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_026_vwmul_vv.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-027",
+      "name": "vwredsum_vs",
+      "title": "vwredsum_vs",
+      "description": "vwredsum.vs over INT16 products of vl<=16 elements with vs1[0] initial value, plus accumulation of 49 iterations (784 elements) at extreme +/- values: signed 32-bit result at element 0 of vd without overflow, other elements unchanged; value-only check (latency not checked beyond the 5-cycle minimum).",
+      "req_ids": [
+        "REQ-007",
+        "REQ-062",
+        "REQ-059"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_027_vwredsum_vs.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-028",
+      "name": "vadd_vsra_vmax",
+      "title": "vadd_vsra_vmax",
+      "description": "vadd.vv/vx, vsra.vi/vx, vmax.vx at SEW 32 and 8 with edge operands (wrap, INT_MIN/MAX, shift 0/max, shift amounts above log2(SEW) bits to check masking to 5 bits at SEW 32 and 3 bits at SEW 8), vl varied: results match reference, tail undisturbed.",
+      "req_ids": [
+        "REQ-008",
+        "REQ-059"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_028_vadd_vsra_vmax.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-029",
+      "name": "vnclip_saturation",
+      "title": "vnclip_saturation",
+      "description": "vnclip.wi/wx 32->16 (shift[4:0] 0..31) and 16->8 (shift[3:0] 0..15) with values at and beyond both clamp ends, vxrm=0 round-to-nearest-up: saturates to [-32768,32767] / [-128,127] without wrap, bit-exact with reference.",
+      "req_ids": [
+        "REQ-008",
+        "REQ-060"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_029_vnclip_saturation.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-030",
+      "name": "vmv_variants",
+      "title": "vmv_variants",
+      "description": "vmv.v.x (splat, tail unchanged), vmv.s.x (element 0 only), vmv.x.s (element 0 to scalar rd, sign-extended to 32 bits, including negative elements at SEW 8) at SEW 8 and 32; scalar result consumed by the next instruction.",
+      "req_ids": [
+        "REQ-008",
+        "REQ-009",
+        "REQ-059"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_030_vmv_variants.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-031",
+      "name": "vector_dispatch_stall",
+      "title": "vector_dispatch_stall",
+      "description": "Vector instructions between scalar instructions: pipeline fully stalled until o_resp_done (no scalar side effect before done), cmd transfer only when valid&ready, i_cmd_valid/instr/rs1/rs2 stable until transfer, o_cmd_ready low while a command executes, o_resp_done a 1-cycle pulse, IDLE->DEC->RD->EXEC->WB->DONE->IDLE and IDLE->REQ->WAIT->DONE sequencing observable via handshakes (and state probes if allowed) with every command, including vsetvli/vsetivli, taking at least 5 cycles from start to o_resp_done, scalar rd written in the done cycle (done AND rd_valid) and usable by the immediate next instruction, back-to-back vector instructions execute one at a time, CPU and VPU never request DMEM in the same cycle.",
+      "req_ids": [
+        "REQ-009",
+        "REQ-031",
+        "REQ-032",
+        "REQ-034",
+        "REQ-036",
+        "REQ-037",
+        "REQ-080",
+        "REQ-081",
+        "REQ-087"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_031_vector_dispatch_stall.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-032",
+      "name": "vector_in_branch_shadow_flushed",
+      "title": "vector_in_branch_shadow_flushed",
+      "description": "A vector instruction (vsetvli/vse/vmv.x.s) in the wrong-path shadow of a taken branch is neither dispatched nor executed (vl, vector regs, memory unchanged).",
+      "req_ids": [
+        "REQ-081",
+        "REQ-084",
+        "REQ-009",
+        "REQ-003"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_032_vector_in_branch_shadow_flushed.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-033",
+      "name": "illegal_vsetvli_vtype",
+      "title": "illegal_vsetvli_vtype",
+      "description": "vsetvli/vsetivli with LMUL 2/4/8/fractional, SEW=64 or reserved vsew: o_halt=1, o_err_illegal=1, sts.err set, no command reaches the VPU (vl unchanged).",
+      "req_ids": [
+        "REQ-054",
+        "REQ-052",
+        "REQ-004"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_033_illegal_vsetvli_vtype.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-034",
+      "name": "sew_dependent_before_vsetvli",
+      "title": "sew_dependent_before_vsetvli",
+      "description": "After reset, vadd/vsra/vmax/vmv/vnclip/vwmul/vwredsum before any legal vsetvli are illegal (halt); vle/vse before vsetvli are not halted; a legal vsetvli makes them legal; reset invalidates the shadow SEW again.",
+      "req_ids": [
+        "REQ-083",
+        "REQ-054",
+        "REQ-052"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_034_sew_dependent_before_vsetvli.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-035",
+      "name": "illegal_sew_combinations_and_vd_alignment",
+      "title": "illegal_sew_combinations_and_vd_alignment",
+      "description": "vwmul/vwredsum at SEW 16/32, vadd/vsra/vmax/vmv at SEW 16, vnclip to SEW 32, widening vd odd: each halts with o_err_illegal=1 and is not dispatched; the legal SEW combinations execute; an odd vs2 of a wide source (vwredsum/vnclip) is not alignment-checked and is not tested for halting.",
+      "req_ids": [
+        "REQ-074",
+        "REQ-052"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_035_illegal_sew_combinations_and_vd_alignment.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-036",
+      "name": "illegal_unsupported_opv",
+      "title": "illegal_unsupported_opv",
+      "description": "Every OP-V / vector memory form outside the exact legal set (REQ-004/005/008 forms plus vwmul.vv and vwredsum.vs) halts with o_halt=1 and o_err_illegal=1 and is not dispatched to the VPU (one program per reset): vsetvl (register form), vwmulu, vwredsumu, vadd.vi, vsra.vv, vmax.vv, vnclip.wv, vwmul.vx, vmv.v.v, vmv.v.i, vsub/vmul/vand/vredsum/vfadd (unsupported ops), masked forms (vm=0) of supported instructions, vle16/vse16, and mask, segment, whole-register, fault-only-first, strided and indexed loads/stores.",
+      "req_ids": [
+        "REQ-054",
+        "REQ-052"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_036_illegal_unsupported_opv.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-037",
+      "name": "mmio_csr_word_access",
+      "title": "mmio_csr_word_access",
+      "description": "Aligned lw/sw to ctrl, sts, result, cycles, uart_cfg, uart_tx at interim offsets 0x00..0x14: write/readback, reserved bits read 0 and ignore writes, uart_cfg.baud_div reset 0x06C8, o_sts_done follows sts.done, o_result_label follows result.label, CPU stalled until completion and resumes with correct ack.",
+      "req_ids": [
+        "REQ-016",
+        "REQ-027"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_037_mmio_csr_word_access.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-038",
+      "name": "apb_transfer_protocol",
+      "title": "apb_transfer_protocol",
+      "description": "On every MMIO access observe APB signals: SETUP (PSEL only) then ACCESS (PENABLE), at least 3 cycles, PADDR (CPU address minus 0x2000_0000, low 2 bits kept)/PWRITE/PWDATA/PSTRB stable until PREADY, PPROT=0, one outstanding transfer, PSTRB=4'b1111 for aligned sw, dmem_ack low until PREADY (younger instructions do not commit during the transfer).",
+      "req_ids": [
+        "REQ-016",
+        "REQ-028",
+        "REQ-029",
+        "REQ-030"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_038_apb_transfer_protocol.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-039",
+      "name": "mmio_partial_misaligned_write_error",
+      "title": "mmio_partial_misaligned_write_error",
+      "description": "sb/sh to each CSR (they reach APB, not blocked in the LSU) and sw at addr+1/+2/+3: PSTRB != 4'b1111, PSLVERR sampled with PREADY gives a single 1-cycle o_sts_err_set pulse, sts.err reads 1, no register modified, CPU gets a normal ack (no hang, no halt, o_err_illegal=0); an aligned sw gives no pulse.",
+      "req_ids": [
+        "REQ-055",
+        "REQ-056",
+        "REQ-016",
+        "REQ-017"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_039_mmio_partial_misaligned_write_error.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-040",
+      "name": "sts_err_set_clear_sources",
+      "title": "sts_err_set_clear_sources",
+      "description": "sts.err is set by PSLVERR pulse and by an illegal instruction, cleared only by writing 1 (write 0 keeps it, sts.busy/done plain RW unaffected), PSLVERR and illegal instruction in close succession both set it; read via lw and probe.",
+      "req_ids": [
+        "REQ-017",
+        "REQ-052",
+        "REQ-055"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_040_sts_err_set_clear_sources.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-041",
+      "name": "start_req_sets_ctrl_start",
+      "title": "start_req_sets_ctrl_start",
+      "description": "One- and multi-cycle pulses of i_start_req (also with CPU polling and idle) set ctrl.start=1 (read via lw), firmware write 0 clears it; pulses during reset have no effect.",
+      "req_ids": [
+        "REQ-026"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_041_start_req_sets_ctrl_start.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-042",
+      "name": "uart_8n1_frame",
+      "title": "uart_8n1_frame",
+      "description": "Write uart_cfg.baud_div (1,2,3,8,100 and default 0x06C8) and uart_tx.data (0x00,0xFF,0x55,0xAA,'0'..'9') then send=1: o_uart_tx idle high, start bit 0, 8 data bits LSB-first, stop bit 1, each bit exactly baud_div clocks (10 bit times), busy=1 for the frame and 0 afterwards, send cleared when byte taken; back-to-back bytes after polling busy.",
+      "req_ids": [
+        "REQ-012",
+        "REQ-063"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_042_uart_8n1_frame.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-043",
+      "name": "cycles_cnt_window",
+      "title": "cycles_cnt_window",
+      "description": "Execute single vector instructions of different latency (vsetvli, vle8, vwmul, vwredsum): every command, including vsetvli, takes at least 5 cycles from start to o_resp_done (latency done_cycle - start_cycle >= 5); cycles.cnt equals done_cycle - start_cycle + 1 measured by the TB (inclusive window), holds only the last vector instruction (no accumulation), reads 0 after reset.",
+      "req_ids": [
+        "REQ-013",
+        "REQ-062",
+        "REQ-087"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_043_cycles_cnt_window.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-044",
+      "name": "cycles_cnt_independent_of_scalar",
+      "title": "cycles_cnt_independent_of_scalar",
+      "description": "After a vector instruction run a long scalar loop and read cycles.cnt before and after: value unchanged, proving it is not fed by the free-running CPU-side counter.",
+      "req_ids": [
+        "REQ-013"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_044_cycles_cnt_independent_of_scalar.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-045",
+      "name": "host_imem_write",
+      "title": "host_imem_write",
+      "description": "With i_ld_en=1 in reset: write at 0, 0x7FFC and random addresses with i_ld_byte_en of 4'h1/4'h0/4'hF and addr[1:0]!=0: the whole word at index addr[14:2] is written at that edge, byte enable ignored; writes with i_ld_req=0 or wr_en=0 do nothing; verified by executing the loaded code.",
+      "req_ids": [
+        "REQ-019",
+        "REQ-042"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_045_host_imem_write.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-046",
+      "name": "host_dmem_masked_write_read",
+      "title": "host_dmem_masked_write_read",
+      "description": "Host DMEM writes with all 16 byte_en patterns over lanes 0..3 of first/last/random rows and addr[1:0] noise: exactly the enabled bytes change, lane = addr[3:2], row = addr[17:4]; reads return the stored word.",
+      "req_ids": [
+        "REQ-020",
+        "REQ-011",
+        "REQ-051"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_046_host_dmem_masked_write_read.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-047",
+      "name": "host_read_latency_back_to_back",
+      "title": "host_read_latency_back_to_back",
+      "description": "Host reads and writes issued every cycle with no gaps (read A0, A1, ..., read-after-write on the next cycle, mixed): o_ld_rd_data carries data exactly 1 cycle after each read request, correct for every request, no handshake or lost access.",
+      "req_ids": [
+        "REQ-021",
+        "REQ-022"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_047_host_read_latency_back_to_back.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-048",
+      "name": "host_miss_addresses",
+      "title": "host_miss_addresses",
+      "description": "Host read of IMEM (after writing it), MMIO and unmapped addresses returns 0 one cycle later; host writes to MMIO/unmapped addresses change nothing (CSR outputs, DMEM, IMEM unchanged, no aliasing to DMEM).",
+      "req_ids": [
+        "REQ-021",
+        "REQ-042"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_048_host_miss_addresses.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-049",
+      "name": "host_ld_en_zero_isolation",
+      "title": "host_ld_en_zero_isolation",
+      "description": "With i_ld_en=0 and reset released, toggle i_ld_req/wr_en/addr/byte_en/wr_data randomly during CPU and vector runs: IMEM and DMEM unaffected, results identical, CPU DMEM timing identical (same halt time as with i_ld_* tied 0, no added cycle in the DMEM path).",
+      "req_ids": [
+        "REQ-018",
+        "REQ-011"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_049_host_ld_en_zero_isolation.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-050",
+      "name": "host_ld_en_ownership_checker",
+      "title": "host_ld_en_ownership_checker",
+      "description": "TB assertion active in every test: i_ld_en=0 at every rising edge where i_rst_n_core=1 and de-asserted no later than reset release; the host never accesses DMEM while reset is released; also checks the TB drives host accesses only while in reset.",
+      "req_ids": [
+        "REQ-023",
+        "REQ-034"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_050_host_ld_en_ownership_checker.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-051",
+      "name": "param_illegal_rejected",
+      "title": "param_illegal_rejected",
+      "description": "Elaborate m_soc_top with illegal parameter values (PARA_VLEN 64/192/512, PARA_LANE_COUNT 0/3/16, VLEN=128 with 8 lanes): each must fail elaboration with $error from a generate-if.",
+      "req_ids": [
+        "REQ-045",
+        "REQ-046",
+        "REQ-047",
+        "REQ-048",
+        "REQ-049",
+        "REQ-050"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_051_param_illegal_rejected.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-052",
+      "name": "param_legal_elaborate",
+      "title": "param_legal_elaborate",
+      "description": "Elaborate legal combinations (128 with 1/2/4 lanes, 256 with 1/2/4/8 lanes) without error; localparams LPARA_LANE_W=32, LPARA_VREG_COUNT=32, LPARA_ROW_LB=log2(VLEN/8), LPARA_VL_W=clog2(VLEN/8+1) checked for the default build.",
+      "req_ids": [
+        "REQ-045",
+        "REQ-046",
+        "REQ-050",
+        "REQ-051"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_052_param_legal_elaborate.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-053",
+      "name": "cfg_v256_row_map_and_vector",
+      "title": "cfg_v256_row_map_and_vector",
+      "description": "With PARA_VLEN=256: host DMEM row/lane mapping (LB=5, byte_en expansion), vsetvli VLMAX 32/16/8, vle/vse/vwmul/vwredsum smoke vs reference.",
+      "req_ids": [
+        "REQ-020",
+        "REQ-004",
+        "REQ-005",
+        "REQ-051"
+      ],
+      "selected": false,
+      "conditional_param": "PARA_VLEN",
+      "compile_status": "not selected"
+    },
+    {
+      "tc_id": "TC-054",
+      "name": "random_scalar_regression",
+      "title": "random_scalar_regression",
+      "description": "Seeded (logged) random scalar programs of ALU, mul, load/store, branch with dense hazards compared with a TB reference ISS through final DMEM/register dump; failing seed reproducible.",
+      "req_ids": [
+        "REQ-001",
+        "REQ-002",
+        "REQ-003"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_054_random_scalar_regression.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-055",
+      "name": "random_vector_regression",
+      "title": "random_vector_regression",
+      "description": "Seeded (logged) random legal vector instruction sequences (vsetvli, vle/vse, vwmul, vwredsum, vadd, vsra, vmax, vnclip, vmv) mixed with scalar code compared with a TB reference model through DMEM dump.",
+      "req_ids": [
+        "REQ-004",
+        "REQ-005",
+        "REQ-006",
+        "REQ-007",
+        "REQ-008",
+        "REQ-009",
+        "REQ-059",
+        "REQ-074"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_055_random_vector_regression.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-056",
+      "name": "mnist_single_image_system",
+      "title": "mnist_single_image_system",
+      "description": "Load delivered firmware, weights and one image through the host port in reset, release, pulse i_start_req, wait o_sts_done: o_result_label and DMEM logits bit-identical to golden, UART byte equals '0'+label, o_halt=0 and o_err_illegal=0.",
+      "req_ids": [
+        "REQ-014",
+        "REQ-012"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_056_mnist_single_image_system.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-057",
+      "name": "mnist_100_images_latency",
+      "title": "mnist_100_images_latency",
+      "description": "100 MNIST images each from reset: labels and logits bit-exact vs golden, every inference completes in fewer than 1,000,000 cycles from start to o_sts_done, no halt/error.",
+      "req_ids": [
+        "REQ-014",
+        "REQ-064"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_057_mnist_100_images_latency.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-058",
+      "name": "fsm_unused_encoding_recovery",
+      "title": "fsm_unused_encoding_recovery",
+      "description": "Force each FSM state register (m_vpu_ctrl 3-bit unused codes, m_apb_master apbm and m_uart uart unused encodings) to an unused code for one cycle and release: the FSM returns to IDLE, no spurious o_resp_done/PSEL/o_uart_tx activity persists, and a subsequent vector instruction, MMIO access and UART byte complete normally; FSMs are verified in IDLE after reset.",
+      "req_ids": [
+        "REQ-036",
+        "REQ-038",
+        "REQ-037"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_058_fsm_unused_encoding_recovery.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-059",
+      "name": "mmio_subword_misaligned_reads",
+      "title": "mmio_subword_misaligned_reads",
+      "description": "lb/lh/lbu/lhu at all byte offsets and lw at addr+1/+2/+3 of each CSR: each read completes without hanging the core, o_halt and o_err_illegal stay 0, no PSLVERR pulse (o_sts_err_set) is produced by a read, registers are unchanged and the following instructions execute; read data and sts.err are not checked.",
+      "req_ids": [
+        "REQ-085"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_059_mmio_subword_misaligned_reads.sv",
+      "compile_status": "pass"
+    },
+    {
+      "tc_id": "TC-060",
+      "name": "mmio_unimplemented_offsets",
+      "title": "mmio_unimplemented_offsets",
+      "description": "lw/sw to unimplemented offsets inside the 4 KB MMIO window (0x2000_0018, 0x2000_0020, 0x2000_0100, 0x2000_0FFC): reads return 0, writes are ignored, the core does not hang or halt and no defined register (ctrl, sts busy/done, result, uart_cfg, uart_tx, cycles) changes; sts.err is not checked for these accesses.",
+      "req_ids": [
+        "REQ-086"
+      ],
+      "selected": true,
+      "conditional_param": null,
+      "file": "src/tb/tests/tc_060_mmio_unimplemented_offsets.sv",
+      "compile_status": "pass"
+    }
+  ],
+  "coverage": {
+    "total_req_ids": 64,
+    "covered_req_ids": [
+      "REQ-001",
+      "REQ-002",
+      "REQ-003",
+      "REQ-004",
+      "REQ-005",
+      "REQ-006",
+      "REQ-007",
+      "REQ-008",
+      "REQ-009",
+      "REQ-010",
+      "REQ-011",
+      "REQ-012",
+      "REQ-013",
+      "REQ-014",
+      "REQ-015",
+      "REQ-016",
+      "REQ-017",
+      "REQ-018",
+      "REQ-019",
+      "REQ-020",
+      "REQ-021",
+      "REQ-022",
+      "REQ-026",
+      "REQ-027",
+      "REQ-028",
+      "REQ-029",
+      "REQ-030",
+      "REQ-031",
+      "REQ-032",
+      "REQ-033",
+      "REQ-034",
+      "REQ-035",
+      "REQ-036",
+      "REQ-037",
+      "REQ-038",
+      "REQ-040",
+      "REQ-041",
+      "REQ-042",
+      "REQ-044",
+      "REQ-052",
+      "REQ-053",
+      "REQ-054",
+      "REQ-055",
+      "REQ-056",
+      "REQ-057",
+      "REQ-058",
+      "REQ-059",
+      "REQ-060",
+      "REQ-062",
+      "REQ-063",
+      "REQ-064",
+      "REQ-073",
+      "REQ-074",
+      "REQ-075",
+      "REQ-076",
+      "REQ-077",
+      "REQ-080",
+      "REQ-081",
+      "REQ-082",
+      "REQ-083",
+      "REQ-084",
+      "REQ-085",
+      "REQ-086",
+      "REQ-087"
+    ],
+    "uncovered_req_ids": [],
+    "excluded_req_ids": [
+      "REQ-039",
+      "REQ-043",
+      "REQ-061",
+      "REQ-065",
+      "REQ-066",
+      "REQ-067",
+      "REQ-068",
+      "REQ-069",
+      "REQ-070",
+      "REQ-071",
+      "REQ-072",
+      "REQ-078"
+    ],
+    "coverage_pct": 100.0
+  },
+  "compile_check": {
+    "tool": "vcs",
+    "status": "pass",
+    "error_count": 0
+  },
+  "result_format": "TC_RESULT <tc_id> PASS|FAIL",
+  "filelist": "src/tb/filelist.f"
+}

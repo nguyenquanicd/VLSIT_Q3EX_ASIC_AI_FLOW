@@ -1,0 +1,53 @@
+{
+  "rtl_files": [
+    "m_rst_sync.sv",
+    "m_pc_gen.sv",
+    "m_if_id_reg.sv",
+    "m_cpu_dec.sv",
+    "m_imm_gen.sv",
+    "m_regfile.sv",
+    "m_id_ex_reg.sv",
+    "m_alu.sv",
+    "m_branch_unit.sv",
+    "m_mul.sv",
+    "m_ex_mem_reg.sv",
+    "m_lsu.sv",
+    "m_mem_wb_reg.sv",
+    "m_hazard_unit.sv",
+    "m_vpu_dispatch.sv",
+    "m_csr_min.sv",
+    "m_vpu_if.sv",
+    "m_vpu_dec.sv",
+    "m_vpu_csr.sv",
+    "m_vpu_ctrl.sv",
+    "m_vpu_regfile.sv",
+    "m_vpu_lsu.sv",
+    "m_lane_alu.sv",
+    "m_lane_mul.sv",
+    "m_lane_narrow.sv",
+    "m_vpu_reduce.sv",
+    "m_vpu_perf.sv",
+    "m_soc_bus.sv",
+    "m_host_ld.sv",
+    "m_imem.sv",
+    "m_dmem.sv",
+    "m_apb_master.sv",
+    "m_uart.sv",
+    "m_cpu_top.sv",
+    "m_vpu_lane.sv",
+    "m_vpu_top.sv",
+    "m_soc_top.sv"
+  ],
+  "flags": [
+    "--ruleset=none",
+    "--rules=+no-tabs,+line-length=length:100,+forbid-defparam,+always-comb,+always-ff-non-blocking,+case-missing-default,+explicit-function-lifetime,+explicit-parameter-storage-type,+module-filename,+one-module-per-file,+module-port,+module-parameter,+typedef-enums,+legacy-genvar-declaration,+generate-label,+invalid-system-task-function,+generate-label-prefix=style_regex:gen_[a-z0-9_]([a-z0-9_]?){25},+parameter-name-style=parameter_style:;parameter_style_regex:PARA_[A-Z0-9_]([A-Z0-9_]?){24};localparam_style:;localparam_style_regex:LPARA_[A-Z0-9_]([A-Z0-9_]?){23},+enum-name-style=style_regex:[a-z0-9_]([a-z0-9_]?){20}_type_def,+signal-name-style=style_regex:(i_[a-z0-9_]([a-z0-9_]?){27}|o_[a-z0-9_]([a-z0-9_]?){27}|io_[a-z0-9_]([a-z0-9_]?){26}|reg_[a-z0-9_]([a-z0-9_]?){25}|w_[a-z0-9_]([a-z0-9_]?){27}|u_[a-z0-9_]([a-z0-9_]?){27}|(gen_)?idx)"
+  ],
+  "findings": 0,
+  "waived_findings": 0,
+  "syntax_errors": [],
+  "rounds": 0,
+  "status": "clean",
+  "verdict": {
+    "summary": "no findings"
+  }
+}

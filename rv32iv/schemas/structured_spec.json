@@ -1,0 +1,2089 @@
+{
+  "metadata": {
+    "ip_name": "rv32_vpu_mnist",
+    "spec_revision": "0.3",
+    "phase": 1,
+    "gate_status": "approved",
+    "gate_1_approved": true,
+    "approved_at": "2026-10-31T14:10:46",
+    "top_module": "m_soc_top",
+    "description": "Small FPGA system that classifies one INT8 28x28 MNIST digit with a pre-trained 784\u2192128\u219210 MLP, running firmware on an in-house RV32I+Zmmul 5-stage core that offloads dot product, bias, requantize and ReLU to an in-house Zve32x VPU (VLEN 128, 4 lanes). Includes IMEM/DMEM, APB4 MMIO to a generated CSR block, UART TX and a host load port."
+  },
+  "requirements": [
+    {
+      "req_id": "REQ-001",
+      "text": "The core shall implement RV32I base instructions (arithmetic/logic, lui, auipc, jumps, branches, lb lh lw lbu lhu sb sh sw) with a 5-stage in-order pipeline (IF, ID, EX, MEM, WB) at one instruction per cycle absent hazards.",
+      "category": "functional",
+      "ambiguity_score": 0.15,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-001",
+      "parameters_affected": [],
+      "feature_id": "FEAT-001",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_cpu_top",
+        "m_cpu_dec",
+        "m_alu",
+        "m_lsu",
+        "m_branch_unit"
+      ]
+    },
+    {
+      "req_id": "REQ-002",
+      "text": "The core shall implement `mul` (Zmmul) returning the low 32 bits of the signed product and shall treat `div`, `divu`, `rem`, `remu` and `mulh*` as illegal instructions.",
+      "category": "functional",
+      "ambiguity_score": 0.2,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-002",
+      "parameters_affected": [],
+      "feature_id": "FEAT-001",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_cpu_dec",
+        "m_mul"
+      ]
+    },
+    {
+      "req_id": "REQ-003",
+      "text": "The core shall resolve branches and jumps in EX, predict not-taken, and flush IF/ID when taken; it shall forward EX/MEM\u2192EX and MEM/WB\u2192EX, and insert exactly 1 bubble for a load followed by an immediate use.",
+      "category": "functional",
+      "ambiguity_score": 0.15,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-003",
+      "parameters_affected": [],
+      "feature_id": "FEAT-001",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_hazard_unit",
+        "m_branch_unit",
+        "m_pc_gen",
+        "m_if_id_reg"
+      ]
+    },
+    {
+      "req_id": "REQ-084",
+      "text": "A wrong-path instruction flushed by a taken branch or jump before it commits shall have no effect: an illegal instruction or `ebreak` in that shadow shall not halt the core and shall not set `o_err_illegal` or `sts.err`.",
+      "category": "functional",
+      "ambiguity_score": 0.15,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-003",
+      "parameters_affected": [],
+      "feature_id": "FEAT-001",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_cpu_dec",
+        "m_cpu_top",
+        "m_hazard_unit",
+        "m_if_id_reg"
+      ]
+    },
+    {
+      "req_id": "REQ-004",
+      "text": "The VPU shall execute `vsetvli`, `vsetivli` (including `vsetvli zero,zero,...`) with vl = min(AVL, VLMAX), VLMAX = (PARA_VLEN/SEW) x LMUL, and return vl through `o_resp_rd_data`.",
+      "category": "functional",
+      "ambiguity_score": 0.15,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-004",
+      "parameters_affected": [
+        "PARA_VLEN"
+      ],
+      "feature_id": "FEAT-003",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_vpu_csr",
+        "m_vpu_dec"
+      ]
+    },
+    {
+      "req_id": "REQ-005",
+      "text": "The VPU shall execute `vle8.v`, `vse8.v`, `vle32.v`, `vse32.v` as unit-stride accesses of exactly vl elements, leaving tail elements and non-written bytes unchanged (byte-enable on stores).",
+      "category": "functional",
+      "ambiguity_score": 0.2,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-005",
+      "parameters_affected": [
+        "PARA_VLEN"
+      ],
+      "feature_id": "FEAT-003",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_vpu_lsu",
+        "m_vpu_regfile"
+      ]
+    },
+    {
+      "req_id": "REQ-006",
+      "text": "The VPU shall execute `vwmul.vv` (INT8xINT8\u2192INT16 signed, including -128 x -128 = 16384) writing a register pair.",
+      "category": "functional",
+      "ambiguity_score": 0.25,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-006",
+      "parameters_affected": [],
+      "feature_id": "FEAT-003",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_lane_mul"
+      ]
+    },
+    {
+      "req_id": "REQ-007",
+      "text": "The VPU shall execute `vwredsum.vs` accumulating signed INT16 elements into a signed INT32 without overflow for up to 784 elements and write the sum plus the initial scalar (vs1[0]) to element 0 of the destination.",
+      "category": "functional",
+      "ambiguity_score": 0.2,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-007",
+      "parameters_affected": [],
+      "feature_id": "FEAT-003",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_vpu_reduce"
+      ]
+    },
+    {
+      "req_id": "REQ-008",
+      "text": "The VPU shall execute `vadd.vv/vx`, `vsra.vi/vx`, `vmax.vx`, `vnclip.wi/wx`, `vmv.v.x`, `vmv.s.x`, `vmv.x.s`; `vnclip` shall saturate to the signed range of the destination element width with no wrap-around ([-32768, 32767] for 32\u219216, [-128, 127] for 16\u21928), using shift[4:0] for 32\u219216 and shift[3:0] for 16\u21928; `vsra` shall mask the shift amount to log2(SEW) bits and `vmv.x.s` shall sign-extend the element to 32 bits (RVV 1.0 semantics, also at SEW = 8); results shall match the golden model bit-for-bit.",
+      "category": "functional",
+      "ambiguity_score": 0.25,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-008",
+      "parameters_affected": [],
+      "feature_id": "FEAT-003",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_lane_alu",
+        "m_lane_narrow",
+        "m_vpu_ctrl"
+      ]
+    },
+    {
+      "req_id": "REQ-009",
+      "text": "On a vector instruction the CPU shall send the instruction and rs1/rs2 values to the VPU and stall the whole pipeline until `o_resp_done`; one vector instruction shall execute at a time.",
+      "category": "functional",
+      "ambiguity_score": 0.15,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-009",
+      "parameters_affected": [],
+      "feature_id": "FEAT-004",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_vpu_dispatch",
+        "m_hazard_unit",
+        "m_vpu_if"
+      ]
+    },
+    {
+      "req_id": "REQ-087",
+      "text": "Every vector command, including `vsetvli`/`vsetivli`, shall pass through all six `m_vpu_ctrl` states (IDLE, DEC, RD, EXEC, WB, DONE), so the latency from command start to `o_resp_done` shall be at least 5 cycles.",
+      "category": "timing",
+      "ambiguity_score": 0.15,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-009",
+      "parameters_affected": [],
+      "feature_id": "FEAT-004",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_vpu_ctrl",
+        "m_vpu_if"
+      ]
+    },
+    {
+      "req_id": "REQ-010",
+      "text": "`m_imem` shall provide 32 KB (8192 x 32) with a synchronous 1-cycle read.",
+      "category": "functional",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-010",
+      "parameters_affected": [],
+      "feature_id": "FEAT-005",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_imem"
+      ]
+    },
+    {
+      "req_id": "REQ-011",
+      "text": "`m_dmem` shall provide 256 KB, single port, PARA_VLEN bits wide, with byte enable and registered read data valid in the cycle after the read.",
+      "category": "functional",
+      "ambiguity_score": 0.15,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-011",
+      "parameters_affected": [
+        "PARA_VLEN"
+      ],
+      "feature_id": "FEAT-005",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_dmem"
+      ]
+    },
+    {
+      "req_id": "REQ-012",
+      "text": "`m_uart` shall transmit one byte at 8N1 with baud divisor `uart_cfg.baud_div` when `uart_tx.send` is written 1, assert `uart_tx.busy` during transmission, and clear `send` when it takes the byte.",
+      "category": "functional",
+      "ambiguity_score": 0.25,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-012",
+      "parameters_affected": [],
+      "feature_id": "FEAT-007",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_uart",
+        "m_soc_csr"
+      ]
+    },
+    {
+      "req_id": "REQ-013",
+      "text": "`m_vpu_perf` shall count `i_clk_core` cycles from vector-instruction start to done and present the value on `i_cycles_cnt`, which feeds `cycles.cnt`; the window is inclusive (counting starts at 1 in the cycle after the start pulse, so the start cycle is counted, and includes the done-pulse cycle); `m_csr_min` is a separate CPU-side counter and shall not feed `cycles.cnt`.",
+      "category": "functional",
+      "ambiguity_score": 0.15,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-013",
+      "parameters_affected": [],
+      "feature_id": "FEAT-009",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_vpu_perf",
+        "m_soc_csr"
+      ]
+    },
+    {
+      "req_id": "REQ-014",
+      "text": "The system shall classify the image with a result bit-identical (logits and label) to the golden model for the delivered firmware and weights.",
+      "category": "functional",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-014",
+      "parameters_affected": [],
+      "feature_id": "",
+      "sva_hint": null,
+      "optional": false,
+      "rtl_modules": [
+        "m_soc_top"
+      ]
+    },
+    {
+      "req_id": "REQ-015",
+      "text": "The memory map shall be IMEM 0x0000_0000 (32 KB), DMEM 0x1000_0000 (256 KB), MMIO 0x2000_0000 (4 KB); `m_soc_bus` shall decode by address and mux the VPU and CPU memory ports.",
+      "category": "functional",
+      "ambiguity_score": 0.2,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-015",
+      "parameters_affected": [],
+      "feature_id": "",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_soc_bus"
+      ]
+    },
+    {
+      "req_id": "REQ-016",
+      "text": "`m_apb_master` shall convert CPU data-bus accesses to the MMIO region into APB SETUP/ACCESS cycles and hold `i_dmem_ack` low until PREADY; for writes it shall forward the CPU byte enables to PSTRB and keep the low 2 address bits on PADDR, with PSTRB = 4'b1111 only for an aligned full-word access.",
+      "category": "interface",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-IF-001",
+      "parameters_affected": [],
+      "feature_id": "FEAT-006",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_apb_master"
+      ]
+    },
+    {
+      "req_id": "REQ-085",
+      "text": "MMIO reads shall never raise PSLVERR (no PSTRB is forwarded for reads); a sub-word (`lb`, `lh`, `lbu`, `lhu`) or misaligned `lw` read of MMIO shall complete without hanging or halting the core, and its data and `sts.err` are not specified.",
+      "category": "interface",
+      "ambiguity_score": 0.25,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-IF-001",
+      "parameters_affected": [],
+      "feature_id": "FEAT-006",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_apb_master",
+        "m_soc_csr"
+      ]
+    },
+    {
+      "req_id": "REQ-017",
+      "text": "When PSLVERR is sampled with PREADY = 1, `m_apb_master` shall drive a 1-cycle pulse (`o_sts_err_set`) to the CSR hardware-write port of `sts.err`; the CPU shall see a normal `i_dmem_ack`.",
+      "category": "interface",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-IF-002",
+      "parameters_affected": [],
+      "feature_id": "FEAT-006",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_apb_master",
+        "m_soc_csr"
+      ]
+    },
+    {
+      "req_id": "REQ-018",
+      "text": "When `i_ld_en` = 0, the `m_soc_bus` DMEM port shall pass to `m_dmem` unchanged through a combinational 2:1 mux (no added cycle), the IMEM write enable shall be 0 and other `i_ld_*` inputs shall be ignored.",
+      "category": "interface",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-IF-004",
+      "parameters_affected": [],
+      "feature_id": "FEAT-008",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_host_ld"
+      ]
+    },
+    {
+      "req_id": "REQ-019",
+      "text": "When `i_ld_en` = 1 and `i_ld_req` = 1 an IMEM write at `i_ld_addr[31:15]` = 0 shall write the whole word at index `i_ld_addr[14:2]` at that rising edge, ignoring `i_ld_byte_en`.",
+      "category": "interface",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-IF-005",
+      "parameters_affected": [],
+      "feature_id": "FEAT-008",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_host_ld",
+        "m_imem"
+      ]
+    },
+    {
+      "req_id": "REQ-020",
+      "text": "A DMEM access (`i_ld_addr[31:18]` = 14'h0400) shall address 32-bit lane `i_ld_addr[LB-1:2]` of row `i_ld_addr[17:LB]` (LB = log2(PARA_VLEN/8)) and a write shall change exactly the bytes enabled by `i_ld_byte_en`.",
+      "category": "interface",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-IF-006",
+      "parameters_affected": [
+        "PARA_VLEN"
+      ],
+      "feature_id": "FEAT-008",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_host_ld",
+        "m_dmem"
+      ]
+    },
+    {
+      "req_id": "REQ-021",
+      "text": "A host read shall return data on `o_ld_rd_data` exactly 1 cycle after the request; a read of IMEM, MMIO or an unmapped address shall return 0, and a write to MMIO or an unmapped address shall change nothing.",
+      "category": "interface",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-IF-007",
+      "parameters_affected": [],
+      "feature_id": "FEAT-008",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_host_ld"
+      ]
+    },
+    {
+      "req_id": "REQ-022",
+      "text": "The host port shall accept back-to-back accesses every cycle with no handshake.",
+      "category": "interface",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-IF-008",
+      "parameters_affected": [],
+      "feature_id": "FEAT-008",
+      "sva_hint": "cover",
+      "optional": false,
+      "rtl_modules": [
+        "m_host_ld"
+      ]
+    },
+    {
+      "req_id": "REQ-023",
+      "text": "`i_ld_en` shall be 0 at every rising edge of `i_clk_core` where `i_rst_n_core` = 1; the testbench shall check this with an assertion.",
+      "category": "interface",
+      "ambiguity_score": 0.15,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-IF-009",
+      "parameters_affected": [],
+      "feature_id": "FEAT-008",
+      "sva_hint": "assume",
+      "optional": false,
+      "rtl_modules": [
+        "m_soc_top"
+      ]
+    },
+    {
+      "req_id": "REQ-024",
+      "text": "`m_soc_csr` shall be connected with `i_slverr_en` = 1 and `i_protect_en` = 0 and be generated with Asynchronous = 0.",
+      "category": "interface",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-IF-003",
+      "parameters_affected": [],
+      "feature_id": "FEAT-006",
+      "sva_hint": "static",
+      "optional": false,
+      "rtl_modules": [
+        "m_soc_top",
+        "m_soc_csr"
+      ]
+    },
+    {
+      "req_id": "REQ-086",
+      "text": "An access to an unimplemented offset inside the 4 KB MMIO window shall read 0 and ignore a write, shall not hang the core and shall not change any defined register; `sts.err` is not specified for such accesses.",
+      "category": "interface",
+      "ambiguity_score": 0.2,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-IF-003",
+      "parameters_affected": [],
+      "feature_id": "FEAT-006",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_soc_csr",
+        "m_apb_master"
+      ]
+    },
+    {
+      "req_id": "REQ-025",
+      "text": "`m_soc_top` shall provide the ports i_clk_core (1), i_rst_n_core (1), i_start_req (1), o_sts_done (1), o_result_label (4), o_uart_tx (1), o_err_illegal (1), o_halt (1), i_ld_en (1), i_ld_req (1), i_ld_wr_en (1), i_ld_addr (32), i_ld_byte_en (4), i_ld_wr_data (32), o_ld_rd_data (32); the port list shall be the same in every configuration.",
+      "category": "interface",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "\u00a76.2",
+      "parameters_affected": [
+        "PARA_VLEN",
+        "PARA_LANE_COUNT"
+      ],
+      "feature_id": "",
+      "sva_hint": "static",
+      "optional": false,
+      "rtl_modules": [
+        "m_soc_top"
+      ]
+    },
+    {
+      "req_id": "REQ-026",
+      "text": "A level 1 on `i_start_req` for at least 1 cycle shall set `ctrl.start` through the `i_hw_wdata_ctrl_start`/`i_hw_we_ctrl_start` ports of `m_soc_csr`; firmware clears it.",
+      "category": "interface",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "\u00a76.2",
+      "parameters_affected": [],
+      "feature_id": "",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_soc_top",
+        "m_soc_csr"
+      ]
+    },
+    {
+      "req_id": "REQ-027",
+      "text": "The status outputs `o_err_illegal`, `o_halt`, `o_sts_done` and `o_result_label` shall be registered level outputs in the core domain and reset to 0; `o_uart_tx` shall reset to 1 (idle high).",
+      "category": "functional",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "\u00a76.4",
+      "parameters_affected": [],
+      "feature_id": "",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_cpu_top",
+        "m_soc_csr",
+        "m_uart",
+        "m_soc_top"
+      ]
+    },
+    {
+      "req_id": "REQ-028",
+      "text": "`m_apb_master` shall run the APB transfer as SETUP then ACCESS: `o_apb_psel` high from SETUP through ACCESS, `o_apb_penable` high in ACCESS only, address/control/write data stable from SETUP until completion; for writes `o_apb_pstrb` shall carry the CPU byte enables (4'b1111 only for an aligned full-word access); `o_apb_paddr` shall be the CPU address minus 0x2000_0000 with the low 2 bits being the CPU address bits; `o_apb_pprot` = 0; the transfer completes at the rising edge where `i_apb_pready` = 1 in ACCESS, when `i_apb_prdata` and `i_apb_pslverr` are sampled.",
+      "category": "interface",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "B5",
+      "parameters_affected": [],
+      "feature_id": "FEAT-006",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_apb_master"
+      ]
+    },
+    {
+      "req_id": "REQ-029",
+      "text": "An MMIO access shall take at least 3 cycles (SETUP, ACCESS, plus at least 1 cycle of PREADY latency), and the CPU pipeline shall be stalled until the transfer completes.",
+      "category": "timing",
+      "ambiguity_score": 0.2,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "B6",
+      "parameters_affected": [],
+      "feature_id": "FEAT-006",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_apb_master",
+        "m_hazard_unit"
+      ]
+    },
+    {
+      "req_id": "REQ-030",
+      "text": "`m_apb_master` shall not start a new transfer until the previous one completes (one outstanding transfer).",
+      "category": "interface",
+      "ambiguity_score": 0.15,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "B7",
+      "parameters_affected": [],
+      "feature_id": "FEAT-006",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_apb_master"
+      ]
+    },
+    {
+      "req_id": "REQ-031",
+      "text": "A CPU\u2192VPU command shall transfer at the rising edge where `i_cmd_valid` = 1 and `o_cmd_ready` = 1; `i_cmd_valid` shall be held with stable `i_cmd_instr`/`i_cmd_rs1_data`/`i_cmd_rs2_data` until then, and `o_resp_done` shall be a 1-cycle pulse.",
+      "category": "interface",
+      "ambiguity_score": 0.15,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "B8",
+      "parameters_affected": [],
+      "feature_id": "FEAT-004",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_vpu_dispatch",
+        "m_vpu_if",
+        "m_vpu_ctrl"
+      ]
+    },
+    {
+      "req_id": "REQ-032",
+      "text": "`o_cmd_ready` shall be asserted only when `m_vpu_ctrl` is in IDLE.",
+      "category": "interface",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "\u00a75.4",
+      "parameters_affected": [],
+      "feature_id": "FEAT-004",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_vpu_ctrl",
+        "m_vpu_if"
+      ]
+    },
+    {
+      "req_id": "REQ-033",
+      "text": "On the VPU memory interface `o_mem_req` shall be held with stable address and data until `i_mem_ack`, and the low log2(PARA_VLEN/8) address bits shall be ignored so that every access is to a PARA_VLEN/8-byte-aligned row.",
+      "category": "interface",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "B9",
+      "parameters_affected": [
+        "PARA_VLEN"
+      ],
+      "feature_id": "FEAT-003",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_vpu_lsu",
+        "m_soc_bus"
+      ]
+    },
+    {
+      "req_id": "REQ-034",
+      "text": "The CPU and the VPU shall never request DMEM in the same cycle, and the host shall never access DMEM when `i_rst_n_core` = 1.",
+      "category": "functional",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "\u00a75.4",
+      "parameters_affected": [],
+      "feature_id": "",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_soc_bus",
+        "m_hazard_unit"
+      ]
+    },
+    {
+      "req_id": "REQ-035",
+      "text": "`x0` of `m_regfile` shall always read 0.",
+      "category": "functional",
+      "ambiguity_score": 0.05,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "\u00a75.4",
+      "parameters_affected": [],
+      "feature_id": "FEAT-001",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_regfile"
+      ]
+    },
+    {
+      "req_id": "REQ-036",
+      "text": "`m_vpu_ctrl` shall step IDLE \u2192 DEC (on `i_cmd_valid`) \u2192 RD \u2192 EXEC (one or more passes, load/store through `m_vpu_lsu`) \u2192 WB \u2192 DONE (pulse `o_resp_done`) \u2192 IDLE, with reset state IDLE and the 2 unused 3-bit codes recovering to IDLE.",
+      "category": "functional",
+      "ambiguity_score": 0.15,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "\u00a710.1",
+      "parameters_affected": [],
+      "feature_id": "",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_vpu_ctrl"
+      ]
+    },
+    {
+      "req_id": "REQ-037",
+      "text": "`m_vpu_lsu` shall step IDLE \u2192 REQ (assert `o_mem_req` with address) \u2192 WAIT \u2192 DONE (on `i_mem_ack`) \u2192 IDLE, with reset state IDLE (2-bit encoding, no unused codes).",
+      "category": "functional",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "\u00a710.1",
+      "parameters_affected": [],
+      "feature_id": "",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_vpu_lsu"
+      ]
+    },
+    {
+      "req_id": "REQ-038",
+      "text": "The `m_apb_master` (apbm: IDLE, SETUP, ACCESS) and `m_uart` (uart: IDLE, START, DATA, STOP) FSMs shall reset to IDLE and recover to IDLE from unused encodings.",
+      "category": "functional",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "\u00a710.1",
+      "parameters_affected": [],
+      "feature_id": "",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_apb_master",
+        "m_uart"
+      ]
+    },
+    {
+      "req_id": "REQ-039",
+      "text": "The design shall use a single clock domain `core` (`i_clk_core`) with no CDC and no clock gating.",
+      "category": "timing",
+      "ambiguity_score": 0.05,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-CLK-001",
+      "parameters_affected": [],
+      "feature_id": "",
+      "sva_hint": null,
+      "optional": false,
+      "rtl_modules": [
+        "m_soc_top"
+      ]
+    },
+    {
+      "req_id": "REQ-040",
+      "text": "`i_rst_n_core` shall be asserted asynchronously and released synchronously through `m_rst_sync`.",
+      "category": "timing",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-RESET-001",
+      "parameters_affected": [],
+      "feature_id": "FEAT-011",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_rst_sync"
+      ]
+    },
+    {
+      "req_id": "REQ-041",
+      "text": "After reset the PC shall be 0x0000_0000, the pipeline empty, all FSMs in IDLE, `o_halt` and `o_err_illegal` 0.",
+      "category": "functional",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-RESET-002",
+      "parameters_affected": [],
+      "feature_id": "FEAT-011",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_pc_gen",
+        "m_cpu_top",
+        "m_vpu_ctrl",
+        "m_vpu_lsu",
+        "m_apb_master",
+        "m_uart"
+      ]
+    },
+    {
+      "req_id": "REQ-042",
+      "text": "Reset shall not gate the host port and shall not clear IMEM or DMEM contents.",
+      "category": "functional",
+      "ambiguity_score": 0.15,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-RESET-003",
+      "parameters_affected": [],
+      "feature_id": "FEAT-011",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_host_ld",
+        "m_imem",
+        "m_dmem"
+      ]
+    },
+    {
+      "req_id": "REQ-043",
+      "text": "Firmware `start.S` shall not clear DMEM.",
+      "category": "functional",
+      "ambiguity_score": 0.05,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-RESET-004",
+      "parameters_affected": [],
+      "feature_id": "FEAT-011",
+      "sva_hint": null,
+      "optional": false,
+      "rtl_modules": [
+        "m_soc_top"
+      ]
+    },
+    {
+      "req_id": "REQ-044",
+      "text": "A reset during a running inference shall abort any in-flight instruction or APB transfer and reset the CSR registers and results, while keeping IMEM and DMEM contents.",
+      "category": "functional",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "\u00a77.3",
+      "parameters_affected": [],
+      "feature_id": "FEAT-011",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_rst_sync",
+        "m_apb_master",
+        "m_soc_csr",
+        "m_vpu_ctrl",
+        "m_cpu_top"
+      ]
+    },
+    {
+      "req_id": "REQ-045",
+      "text": "`PARA_VLEN` shall be 128 or 256 (default 128) and divisible by PARA_LANE_COUNT x LPARA_LANE_W.",
+      "category": "constraint",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-PARAM-001",
+      "parameters_affected": [
+        "PARA_VLEN",
+        "PARA_LANE_COUNT"
+      ],
+      "feature_id": "FEAT-010",
+      "sva_hint": "static",
+      "optional": true,
+      "rtl_modules": [
+        "m_vpu_top"
+      ]
+    },
+    {
+      "req_id": "REQ-046",
+      "text": "`PARA_LANE_COUNT` shall be 1, 2, 4 or 8 (default 4).",
+      "category": "constraint",
+      "ambiguity_score": 0.05,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-PARAM-002",
+      "parameters_affected": [
+        "PARA_LANE_COUNT"
+      ],
+      "feature_id": "FEAT-010",
+      "sva_hint": "static",
+      "optional": true,
+      "rtl_modules": [
+        "m_vpu_top"
+      ]
+    },
+    {
+      "req_id": "REQ-047",
+      "text": "Illegal parameter values shall be rejected at elaboration with `$error` in a generate-`if`.",
+      "category": "constraint",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-PARAM-003",
+      "parameters_affected": [
+        "PARA_VLEN",
+        "PARA_LANE_COUNT"
+      ],
+      "feature_id": "FEAT-010",
+      "sva_hint": "static",
+      "optional": true,
+      "rtl_modules": [
+        "m_vpu_top"
+      ]
+    },
+    {
+      "req_id": "REQ-048",
+      "text": "Elaboration constraint C1: PARA_VLEN == 128 || PARA_VLEN == 256.",
+      "category": "constraint",
+      "ambiguity_score": 0.05,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "\u00a78 C1",
+      "parameters_affected": [
+        "PARA_VLEN"
+      ],
+      "feature_id": "",
+      "sva_hint": "static",
+      "optional": false,
+      "rtl_modules": [
+        "m_vpu_top"
+      ]
+    },
+    {
+      "req_id": "REQ-049",
+      "text": "Elaboration constraint C2: PARA_LANE_COUNT shall be 1, 2, 4 or 8 (a power of 2).",
+      "category": "constraint",
+      "ambiguity_score": 0.05,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "\u00a78 C2",
+      "parameters_affected": [
+        "PARA_LANE_COUNT"
+      ],
+      "feature_id": "",
+      "sva_hint": "static",
+      "optional": false,
+      "rtl_modules": [
+        "m_vpu_top"
+      ]
+    },
+    {
+      "req_id": "REQ-050",
+      "text": "Elaboration constraint C3: PARA_VLEN % (PARA_LANE_COUNT * LPARA_LANE_W) == 0 (LPARA_LANE_W = 32).",
+      "category": "constraint",
+      "ambiguity_score": 0.05,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "\u00a78 C3",
+      "parameters_affected": [
+        "PARA_VLEN",
+        "PARA_LANE_COUNT"
+      ],
+      "feature_id": "",
+      "sva_hint": "static",
+      "optional": false,
+      "rtl_modules": [
+        "m_vpu_top"
+      ]
+    },
+    {
+      "req_id": "REQ-051",
+      "text": "The derived local parameters shall be LPARA_LANE_W = 32, LPARA_VREG_COUNT = 32, LPARA_ROW_LB = $clog2(PARA_VLEN/8) and LPARA_VL_W = $clog2(PARA_VLEN/8 + 1), the largest VLMAX being PARA_VLEN/8 (SEW = 8, LMUL = 1).",
+      "category": "constraint",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-PARAM-004",
+      "parameters_affected": [
+        "PARA_VLEN"
+      ],
+      "feature_id": "FEAT-010",
+      "sva_hint": "static",
+      "optional": true,
+      "rtl_modules": [
+        "m_vpu_top",
+        "m_vpu_csr"
+      ]
+    },
+    {
+      "req_id": "REQ-052",
+      "text": "An illegal instruction shall halt the core (`o_halt` = 1), assert `o_err_illegal` and set `sts.err`; the instruction shall not be dispatched to the VPU.",
+      "category": "functional",
+      "ambiguity_score": 0.15,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-ERR-001",
+      "parameters_affected": [],
+      "feature_id": "FEAT-002",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_cpu_dec",
+        "m_cpu_top",
+        "m_pc_gen"
+      ]
+    },
+    {
+      "req_id": "REQ-053",
+      "text": "In the Halted state (entered on an illegal instruction or `ebreak`) the PC shall stop and the pipeline be drained; `o_halt` shall stay 1 until reset, with `o_err_illegal` = 1 if the cause was an illegal instruction and 0 for `ebreak`.",
+      "category": "functional",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "\u00a710.1",
+      "parameters_affected": [],
+      "feature_id": "FEAT-002",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_cpu_top",
+        "m_pc_gen",
+        "m_hazard_unit"
+      ]
+    },
+    {
+      "req_id": "REQ-054",
+      "text": "`m_cpu_dec` shall decode the supported Zve32x subset itself, including the SEW and LMUL fields of `vsetvli`/`vsetivli` immediates (only LMUL = 1 and SEW 8, 16, 32 are legal), and shall flag any other OP-V instruction as illegal before dispatch: only the exact forms of REQ-004, REQ-005, REQ-008 plus `vwmul.vv` and `vwredsum.vs` are legal, and every other form is illegal, including `vsetvl` (register form), `vwmulu`, `vwredsumu`, `vadd.vi`, `vsra.vv`, `vmax.vv`, `vnclip.wv`, `vwmul.vx`, `vmv.v.v`, `vmv.v.i`, masked forms (vm = 0), `vle16`/`vse16`, and mask, segment, whole-register and fault-only-first loads and stores; the `m_vpu_top` interface has no error response.",
+      "category": "functional",
+      "ambiguity_score": 0.15,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-018",
+      "parameters_affected": [],
+      "feature_id": "FEAT-003",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_cpu_dec"
+      ]
+    },
+    {
+      "req_id": "REQ-055",
+      "text": "A partial (PSTRB != 4'b1111) or misaligned APB write to `m_soc_csr` shall produce PSLVERR and not modify any register; a misaligned MMIO store is a partial write and therefore sets `sts.err`.",
+      "category": "functional",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-ERR-002",
+      "parameters_affected": [],
+      "feature_id": "FEAT-006",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_soc_csr",
+        "m_apb_master"
+      ]
+    },
+    {
+      "req_id": "REQ-056",
+      "text": "`m_lsu` shall let `sb`/`sh` accesses to the MMIO region reach the APB master (not block them), which forwards the CPU byte enables to PSTRB, so that the resulting PSLVERR sets `sts.err`.",
+      "category": "functional",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "ERR-003",
+      "parameters_affected": [],
+      "feature_id": "FEAT-006",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_lsu",
+        "m_apb_master"
+      ]
+    },
+    {
+      "req_id": "REQ-057",
+      "text": "A CPU access to an unmapped data address, including the IMEM range (0x0000_0000-0x0000_7FFF), shall return 0 on a read and ignore a write, with no error flag.",
+      "category": "functional",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-017",
+      "parameters_affected": [],
+      "feature_id": "FEAT-005",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_soc_bus"
+      ]
+    },
+    {
+      "req_id": "REQ-058",
+      "text": "When a VPU unit-stride access address is not row-aligned, the VPU shall ignore the low log2(PARA_VLEN/8) address bits and access the aligned row, without raising an error; only the row part of `o_mem_addr` is significant, and `m_vpu_top` may drive the ignored low bits unmodified or cleared (they are not checked).",
+      "category": "functional",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-005",
+      "parameters_affected": [
+        "PARA_VLEN"
+      ],
+      "feature_id": "FEAT-003",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_vpu_lsu",
+        "m_soc_bus"
+      ]
+    },
+    {
+      "req_id": "REQ-059",
+      "text": "For vector instructions, elements with index >= vl shall be left unchanged (tail-undisturbed) and the destination registers other than those written shall not change.",
+      "category": "functional",
+      "ambiguity_score": 0.25,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "\u00a79, ASM-004",
+      "parameters_affected": [],
+      "feature_id": "FEAT-003",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_vpu_regfile",
+        "m_vpu_ctrl",
+        "m_lane_alu"
+      ]
+    },
+    {
+      "req_id": "REQ-060",
+      "text": "`vnclip` shall use rounding mode round-to-nearest-up (vxrm = 0), matching the golden model.",
+      "category": "functional",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "\u00a79, ASM-005",
+      "parameters_affected": [],
+      "feature_id": "FEAT-003",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_lane_narrow"
+      ]
+    },
+    {
+      "req_id": "REQ-061",
+      "text": "A same-address read-during-write inside `m_dmem` shall return the old data (read-first).",
+      "category": "functional",
+      "ambiguity_score": 0.2,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "\u00a710.5",
+      "parameters_affected": [],
+      "feature_id": "FEAT-005",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_dmem"
+      ]
+    },
+    {
+      "req_id": "REQ-062",
+      "text": "The vector instruction latency shall be multi-cycle and not fixed by this spec beyond the 5-cycle minimum (initiation interval = latency); `vwredsum` reduction latency is also unspecified and only result values are checked.",
+      "category": "timing",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "OP-002, \u00a710.4",
+      "parameters_affected": [
+        "PARA_LANE_COUNT"
+      ],
+      "feature_id": "FEAT-003",
+      "sva_hint": null,
+      "optional": false,
+      "rtl_modules": [
+        "m_vpu_ctrl",
+        "m_vpu_reduce"
+      ]
+    },
+    {
+      "req_id": "REQ-063",
+      "text": "A UART byte shall take 10 bit times of `baud_div` clocks each (start, 8 data, stop), and `uart_tx.send` shall be cleared when the byte is taken.",
+      "category": "timing",
+      "ambiguity_score": 0.2,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "OP-004",
+      "parameters_affected": [],
+      "feature_id": "FEAT-007",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_uart"
+      ]
+    },
+    {
+      "req_id": "REQ-064",
+      "text": "The inference time shall be below 1,000,000 cycles per image (target).",
+      "category": "timing",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-PERF-001",
+      "parameters_affected": [],
+      "feature_id": "",
+      "sva_hint": null,
+      "optional": false,
+      "rtl_modules": [
+        "m_soc_top"
+      ]
+    },
+    {
+      "req_id": "REQ-065",
+      "text": "The INT8 accuracy on the 10,000 test images shall be at least 96% (golden model).",
+      "category": "timing",
+      "ambiguity_score": 0.05,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-PERF-002",
+      "parameters_affected": [],
+      "feature_id": "",
+      "sva_hint": null,
+      "optional": false,
+      "rtl_modules": [
+        "m_soc_top"
+      ]
+    },
+    {
+      "req_id": "REQ-066",
+      "text": "A taken branch shall cost about 2 cycles of penalty (estimate).",
+      "category": "timing",
+      "ambiguity_score": 0.15,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "PERF-004",
+      "parameters_affected": [],
+      "feature_id": "FEAT-001",
+      "sva_hint": null,
+      "optional": false,
+      "rtl_modules": [
+        "m_hazard_unit",
+        "m_branch_unit"
+      ]
+    },
+    {
+      "req_id": "REQ-067",
+      "text": "A dot-product iteration (vle8, vle8, vwmul.vv, vwredsum.vs) shall take about 6-10 cycles (goal, not hard).",
+      "category": "timing",
+      "ambiguity_score": 0.2,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "\u00a710.4",
+      "parameters_affected": [],
+      "feature_id": "",
+      "sva_hint": null,
+      "optional": false,
+      "rtl_modules": [
+        "m_vpu_ctrl",
+        "m_hazard_unit"
+      ]
+    },
+    {
+      "req_id": "REQ-068",
+      "text": "The design shall target a 200 MHz `i_clk_core` (5 ns) on Arria 10 with Quartus (goal, not hard); closure is claimed only by STA with the SDC in `constraints/`.",
+      "category": "timing",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "PPA-001",
+      "parameters_affected": [],
+      "feature_id": "",
+      "sva_hint": null,
+      "optional": false,
+      "rtl_modules": [
+        "m_soc_top"
+      ]
+    },
+    {
+      "req_id": "REQ-069",
+      "text": "All RTL except `m_soc_csr` shall comply with REF-003.",
+      "category": "constraint",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-RTL-001",
+      "parameters_affected": [],
+      "feature_id": "",
+      "sva_hint": null,
+      "optional": false,
+      "rtl_modules": [
+        "m_soc_top"
+      ]
+    },
+    {
+      "req_id": "REQ-070",
+      "text": "RTL shall contain no `initial` block or `$readmemh`; memory initialization shall use the flow's init file inside the `m_imem`/`m_dmem` wrappers, and simulation shall load memories by testbench hierarchical reference.",
+      "category": "constraint",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "\u00a710.5",
+      "parameters_affected": [],
+      "feature_id": "",
+      "sva_hint": null,
+      "optional": false,
+      "rtl_modules": [
+        "m_imem",
+        "m_dmem"
+      ]
+    },
+    {
+      "req_id": "REQ-071",
+      "text": "Testbenches, models and SVA shall reside in `tb/`, outside the synthesis filelist.",
+      "category": "constraint",
+      "ambiguity_score": 0.05,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-VER-001",
+      "parameters_affected": [],
+      "feature_id": "",
+      "sva_hint": null,
+      "optional": false,
+      "rtl_modules": [
+        "m_soc_top"
+      ]
+    },
+    {
+      "req_id": "REQ-072",
+      "text": "A regression script shall report PASS/FAIL over instruction-, layer- and system-level tests.",
+      "category": "constraint",
+      "ambiguity_score": 0.05,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-VER-002",
+      "parameters_affected": [],
+      "feature_id": "",
+      "sva_hint": null,
+      "optional": false,
+      "rtl_modules": [
+        "m_soc_top"
+      ]
+    },
+    {
+      "req_id": "REQ-073",
+      "text": "`ebreak` shall halt the core (`o_halt` = 1, `o_err_illegal` = 0); `fence` shall execute as a NOP; `ecall` and all CSR and other SYSTEM opcodes shall be illegal instructions.",
+      "category": "functional",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-016",
+      "parameters_affected": [],
+      "feature_id": "FEAT-002",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_cpu_dec",
+        "m_cpu_top"
+      ]
+    },
+    {
+      "req_id": "REQ-074",
+      "text": "Vector instructions shall be legal only for these SEW combinations: `vwmul.vv` with SEW = 8 sources and 16-bit results; `vwredsum.vs` with 16-bit source elements and a 32-bit sum, reading element indexes below vl (up to PARA_VLEN/8 elements) from the register pair vs2/vs2+1; `vadd`, `vsra`, `vmax`, `vmv` at SEW = 32 and 8; `vnclip` in the steps 32\u219216 and 16\u21928. Any other SEW combination, or a widening-result `vd` that is not an even register, shall be an illegal instruction; only the widening-result `vd` is alignment-checked and an odd `vs2` of a wide source is not checked.",
+      "category": "functional",
+      "ambiguity_score": 0.15,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-019",
+      "parameters_affected": [
+        "PARA_VLEN"
+      ],
+      "feature_id": "FEAT-003",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_cpu_dec"
+      ]
+    },
+    {
+      "req_id": "REQ-075",
+      "text": "Misaligned scalar loads and stores shall not trap: byte enables and data shall be shifted by addr[1:0] and bytes falling outside the word shall be dropped, with no word-crossing split; a misaligned load shall return word >> (8 x addr[1:0]) with the missing upper bytes zero-filled, then the normal sign or zero extension of the access width.",
+      "category": "functional",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-001",
+      "parameters_affected": [],
+      "feature_id": "FEAT-001",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_lsu"
+      ]
+    },
+    {
+      "req_id": "REQ-076",
+      "text": "`m_regfile` shall bypass a same-cycle write-back write to a read port (write-to-read bypass), with `x0` still reading 0.",
+      "category": "functional",
+      "ambiguity_score": 0.1,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-003",
+      "parameters_affected": [],
+      "feature_id": "FEAT-001",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_regfile"
+      ]
+    },
+    {
+      "req_id": "REQ-077",
+      "text": "For `vsetvli zero,zero,...` the VPU shall keep vl and write the new SEW when the setting is legal (LMUL = 1, SEW 8/16/32), without a VLMAX-preservation check.",
+      "category": "functional",
+      "ambiguity_score": 0.15,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-004",
+      "parameters_affected": [],
+      "feature_id": "FEAT-003",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_vpu_csr",
+        "m_vpu_dec"
+      ]
+    },
+    {
+      "req_id": "REQ-078",
+      "text": "A request with an illegal vtype that reaches `m_vpu_csr` shall be ignored: vsew and vl are unchanged and the current vl is returned.",
+      "category": "functional",
+      "ambiguity_score": 0.15,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-004",
+      "parameters_affected": [],
+      "feature_id": "FEAT-003",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_vpu_csr"
+      ]
+    },
+    {
+      "req_id": "REQ-079",
+      "text": "`m_vpu_lsu` shall sample `i_mem_ack` only in WAIT, so the memory side (`m_vpu_top`/DMEM path) shall answer at least 1 cycle after `o_mem_req` rises.",
+      "category": "interface",
+      "ambiguity_score": 0.15,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-005",
+      "parameters_affected": [],
+      "feature_id": "FEAT-003",
+      "sva_hint": "assume",
+      "optional": false,
+      "rtl_modules": [
+        "m_vpu_lsu",
+        "m_soc_bus",
+        "m_dmem"
+      ]
+    },
+    {
+      "req_id": "REQ-080",
+      "text": "The scalar write-back valid for a vector instruction shall be the done pulse AND `o_resp_rd_valid`, so write-back occurs in the cycle the stall releases, with `o_rd_data` passed through from `o_resp_rd_data`.",
+      "category": "functional",
+      "ambiguity_score": 0.15,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-009",
+      "parameters_affected": [],
+      "feature_id": "FEAT-004",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_vpu_dispatch"
+      ]
+    },
+    {
+      "req_id": "REQ-081",
+      "text": "`m_cpu_dec` shall assert the vector-valid signal only for a legal, unflushed instruction, and the stalled pipeline shall keep the instruction and rs1/rs2 stable until the done pulse.",
+      "category": "functional",
+      "ambiguity_score": 0.15,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-009",
+      "parameters_affected": [],
+      "feature_id": "FEAT-004",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_cpu_dec",
+        "m_hazard_unit",
+        "m_vpu_dispatch"
+      ]
+    },
+    {
+      "req_id": "REQ-082",
+      "text": "A VPU access to an address outside DMEM shall be acknowledged immediately, a read returns 0, a write is ignored and no error is raised.",
+      "category": "functional",
+      "ambiguity_score": 0.15,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-015",
+      "parameters_affected": [],
+      "feature_id": "FEAT-005",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_soc_bus"
+      ]
+    },
+    {
+      "req_id": "REQ-083",
+      "text": "A SEW-dependent vector instruction (`vadd`, `vsra`, `vmax`, `vmv`, `vnclip`, `vwmul`, `vwredsum`) shall be illegal until a legal `vsetvli`/`vsetivli` has been accepted (the shadow SEW is invalid after reset); `vle`/`vse` shall not be checked against vtype.",
+      "category": "functional",
+      "ambiguity_score": 0.2,
+      "needs_review": false,
+      "needs_human_decision": false,
+      "source_section": "REQ-FUNC-018",
+      "parameters_affected": [],
+      "feature_id": "FEAT-003",
+      "sva_hint": "property",
+      "optional": false,
+      "rtl_modules": [
+        "m_cpu_dec"
+      ]
+    }
+  ],
+  "parameters": [
+    {
+      "name": "PARA_VLEN",
+      "type": "parameter logic [31:0]",
+      "default": "128",
+      "valid_range": "128, 256",
+      "description": "Vector register width in bits; sets the width of o_mem_wr_data, i_mem_rd_data, o_mem_byte_en, the DMEM row and VLMAX; no port is added or removed.",
+      "locked": false,
+      "req_ids": [
+        "REQ-004",
+        "REQ-005",
+        "REQ-011",
+        "REQ-020",
+        "REQ-025",
+        "REQ-033",
+        "REQ-045",
+        "REQ-047",
+        "REQ-048",
+        "REQ-050",
+        "REQ-051",
+        "REQ-058",
+        "REQ-074"
+      ],
+      "feature_ids": [
+        "FEAT-010"
+      ],
+      "constraints": [
+        "C1",
+        "C3",
+        "C4"
+      ]
+    },
+    {
+      "name": "PARA_LANE_COUNT",
+      "type": "parameter logic [31:0]",
+      "default": "4",
+      "valid_range": "1, 2, 4, 8",
+      "description": "Number of parallel m_vpu_lane instances; sets passes per instruction.",
+      "locked": false,
+      "req_ids": [
+        "REQ-025",
+        "REQ-045",
+        "REQ-046",
+        "REQ-047",
+        "REQ-049",
+        "REQ-050",
+        "REQ-062"
+      ],
+      "feature_ids": [
+        "FEAT-010"
+      ],
+      "constraints": [
+        "C2",
+        "C3",
+        "C4"
+      ]
+    }
+  ],
+  "constraints": [
+    {
+      "id": "C1",
+      "rule": "PARA_VLEN == 128 || PARA_VLEN == 256",
+      "description": "PARA_VLEN is 128 or 256."
+    },
+    {
+      "id": "C2",
+      "rule": "PARA_LANE_COUNT == 1 || PARA_LANE_COUNT == 2 || PARA_LANE_COUNT == 4 || PARA_LANE_COUNT == 8",
+      "description": "PARA_LANE_COUNT is a power of 2 from 1 to 8."
+    },
+    {
+      "id": "C3",
+      "rule": "PARA_VLEN % (PARA_LANE_COUNT * 32) == 0",
+      "description": "PARA_VLEN is divisible by PARA_LANE_COUNT x LPARA_LANE_W (LPARA_LANE_W = 32)."
+    },
+    {
+      "id": "C4",
+      "rule": "PARA_VLEN >= PARA_LANE_COUNT * 32",
+      "description": "Implied by C3 with PARA_VLEN > 0."
+    }
+  ],
+  "modules": [
+    {
+      "name": "m_soc_top",
+      "description": "Structural top of the MNIST inference SoC.",
+      "instances": [
+        "m_rst_sync",
+        "m_cpu_top",
+        "m_vpu_top",
+        "m_soc_bus",
+        "m_host_ld",
+        "m_imem",
+        "m_dmem",
+        "m_apb_master",
+        "m_soc_csr",
+        "m_uart"
+      ],
+      "req_ids": [
+        "REQ-014",
+        "REQ-023",
+        "REQ-024",
+        "REQ-025",
+        "REQ-026",
+        "REQ-027",
+        "REQ-039",
+        "REQ-043",
+        "REQ-064",
+        "REQ-065",
+        "REQ-068",
+        "REQ-069",
+        "REQ-071",
+        "REQ-072"
+      ]
+    },
+    {
+      "name": "m_rst_sync",
+      "description": "Reset synchronizer: async assert, synchronous release (2-flop).",
+      "instances": [],
+      "req_ids": [
+        "REQ-040",
+        "REQ-044"
+      ]
+    },
+    {
+      "name": "m_cpu_top",
+      "description": "Structural CPU wrapper: 5-stage RV32I+Zmmul pipeline with vector dispatch.",
+      "instances": [
+        "m_pc_gen",
+        "m_if_id_reg",
+        "m_cpu_dec",
+        "m_imm_gen",
+        "m_regfile",
+        "m_id_ex_reg",
+        "m_alu",
+        "m_branch_unit",
+        "m_mul",
+        "m_ex_mem_reg",
+        "m_lsu",
+        "m_mem_wb_reg",
+        "m_hazard_unit",
+        "m_vpu_dispatch",
+        "m_csr_min"
+      ],
+      "req_ids": [
+        "REQ-001",
+        "REQ-084",
+        "REQ-027",
+        "REQ-041",
+        "REQ-044",
+        "REQ-052",
+        "REQ-053",
+        "REQ-073"
+      ]
+    },
+    {
+      "name": "m_pc_gen",
+      "description": "Program counter generation and fetch redirect/halt.",
+      "instances": [],
+      "req_ids": [
+        "REQ-003",
+        "REQ-041",
+        "REQ-052",
+        "REQ-053"
+      ]
+    },
+    {
+      "name": "m_if_id_reg",
+      "description": "IF/ID pipeline register with flush/stall.",
+      "instances": [],
+      "req_ids": [
+        "REQ-003",
+        "REQ-084"
+      ]
+    },
+    {
+      "name": "m_cpu_dec",
+      "description": "ID-stage decoder: RV32I/Zmmul/Zve32x subset decode and illegal detection.",
+      "instances": [],
+      "req_ids": [
+        "REQ-001",
+        "REQ-002",
+        "REQ-084",
+        "REQ-052",
+        "REQ-054",
+        "REQ-073",
+        "REQ-074",
+        "REQ-081",
+        "REQ-083"
+      ]
+    },
+    {
+      "name": "m_imm_gen",
+      "description": "Immediate generator.",
+      "instances": [],
+      "req_ids": []
+    },
+    {
+      "name": "m_regfile",
+      "description": "32x32 register file with write-to-read bypass; x0 = 0.",
+      "instances": [],
+      "req_ids": [
+        "REQ-035",
+        "REQ-076"
+      ]
+    },
+    {
+      "name": "m_id_ex_reg",
+      "description": "ID/EX pipeline register.",
+      "instances": [],
+      "req_ids": []
+    },
+    {
+      "name": "m_alu",
+      "description": "Integer ALU.",
+      "instances": [],
+      "req_ids": [
+        "REQ-001"
+      ]
+    },
+    {
+      "name": "m_branch_unit",
+      "description": "Branch/jump resolution in EX.",
+      "instances": [],
+      "req_ids": [
+        "REQ-001",
+        "REQ-003",
+        "REQ-066"
+      ]
+    },
+    {
+      "name": "m_mul",
+      "description": "32-bit multiplier (low 32 bits, Zmmul).",
+      "instances": [],
+      "req_ids": [
+        "REQ-002"
+      ]
+    },
+    {
+      "name": "m_ex_mem_reg",
+      "description": "EX/MEM pipeline register.",
+      "instances": [],
+      "req_ids": []
+    },
+    {
+      "name": "m_lsu",
+      "description": "Scalar load/store unit with misaligned handling.",
+      "instances": [],
+      "req_ids": [
+        "REQ-001",
+        "REQ-056",
+        "REQ-075"
+      ]
+    },
+    {
+      "name": "m_mem_wb_reg",
+      "description": "MEM/WB pipeline register.",
+      "instances": [],
+      "req_ids": []
+    },
+    {
+      "name": "m_hazard_unit",
+      "description": "Forwarding, load-use bubble, stall and flush control.",
+      "instances": [],
+      "req_ids": [
+        "REQ-003",
+        "REQ-084",
+        "REQ-009",
+        "REQ-029",
+        "REQ-034",
+        "REQ-053",
+        "REQ-066",
+        "REQ-067",
+        "REQ-081"
+      ]
+    },
+    {
+      "name": "m_vpu_dispatch",
+      "description": "CPU-to-VPU command passthrough and write-back valid.",
+      "instances": [],
+      "req_ids": [
+        "REQ-009",
+        "REQ-031",
+        "REQ-080",
+        "REQ-081"
+      ]
+    },
+    {
+      "name": "m_csr_min",
+      "description": "Free-running CPU-side cycle counter.",
+      "instances": [],
+      "req_ids": []
+    },
+    {
+      "name": "m_vpu_top",
+      "description": "Structural VPU wrapper (Zve32x subset).",
+      "instances": [
+        "m_vpu_if",
+        "m_vpu_dec",
+        "m_vpu_csr",
+        "m_vpu_ctrl",
+        "m_vpu_regfile",
+        "m_vpu_lsu",
+        "m_vpu_lane",
+        "m_vpu_reduce",
+        "m_vpu_perf"
+      ],
+      "req_ids": [
+        "REQ-045",
+        "REQ-046",
+        "REQ-047",
+        "REQ-048",
+        "REQ-049",
+        "REQ-050",
+        "REQ-051"
+      ]
+    },
+    {
+      "name": "m_vpu_if",
+      "description": "VPU command interface; latches instruction and operands.",
+      "instances": [],
+      "req_ids": [
+        "REQ-009",
+        "REQ-087",
+        "REQ-031",
+        "REQ-032"
+      ]
+    },
+    {
+      "name": "m_vpu_dec",
+      "description": "VPU vsetvli decode: new vl, SEW and scalar result.",
+      "instances": [],
+      "req_ids": [
+        "REQ-004",
+        "REQ-077"
+      ]
+    },
+    {
+      "name": "m_vpu_csr",
+      "description": "vl and vsew storage.",
+      "instances": [],
+      "req_ids": [
+        "REQ-004",
+        "REQ-051",
+        "REQ-077",
+        "REQ-078"
+      ]
+    },
+    {
+      "name": "m_vpu_ctrl",
+      "description": "VPU control FSM (IDLE, DEC, RD, EXEC, WB, DONE).",
+      "instances": [],
+      "req_ids": [
+        "REQ-008",
+        "REQ-087",
+        "REQ-031",
+        "REQ-032",
+        "REQ-036",
+        "REQ-041",
+        "REQ-044",
+        "REQ-059",
+        "REQ-062",
+        "REQ-067"
+      ]
+    },
+    {
+      "name": "m_vpu_regfile",
+      "description": "32 x PARA_VLEN vector register file.",
+      "instances": [],
+      "req_ids": [
+        "REQ-005",
+        "REQ-059"
+      ]
+    },
+    {
+      "name": "m_vpu_lsu",
+      "description": "VPU memory FSM (IDLE, REQ, WAIT, DONE).",
+      "instances": [],
+      "req_ids": [
+        "REQ-005",
+        "REQ-033",
+        "REQ-037",
+        "REQ-041",
+        "REQ-058",
+        "REQ-079"
+      ]
+    },
+    {
+      "name": "m_vpu_lane",
+      "description": "Lane datapath, instantiated PARA_LANE_COUNT times.",
+      "instances": [
+        "m_lane_alu",
+        "m_lane_mul",
+        "m_lane_narrow"
+      ],
+      "req_ids": []
+    },
+    {
+      "name": "m_lane_alu",
+      "description": "Lane add/shift/max/move ALU.",
+      "instances": [],
+      "req_ids": [
+        "REQ-008",
+        "REQ-059"
+      ]
+    },
+    {
+      "name": "m_lane_mul",
+      "description": "Lane widening INT8 multiplier.",
+      "instances": [],
+      "req_ids": [
+        "REQ-006"
+      ]
+    },
+    {
+      "name": "m_lane_narrow",
+      "description": "Lane vnclip narrowing with saturation.",
+      "instances": [],
+      "req_ids": [
+        "REQ-008",
+        "REQ-060"
+      ]
+    },
+    {
+      "name": "m_vpu_reduce",
+      "description": "vwredsum reduction unit.",
+      "instances": [],
+      "req_ids": [
+        "REQ-007",
+        "REQ-062"
+      ]
+    },
+    {
+      "name": "m_vpu_perf",
+      "description": "Vector-instruction cycle counter driving cycles.cnt.",
+      "instances": [],
+      "req_ids": [
+        "REQ-013"
+      ]
+    },
+    {
+      "name": "m_soc_bus",
+      "description": "Address decode and CPU/VPU memory mux; MMIO routing.",
+      "instances": [],
+      "req_ids": [
+        "REQ-015",
+        "REQ-033",
+        "REQ-034",
+        "REQ-057",
+        "REQ-058",
+        "REQ-079",
+        "REQ-082"
+      ]
+    },
+    {
+      "name": "m_host_ld",
+      "description": "Host load port: DMEM 2:1 mux and IMEM write.",
+      "instances": [],
+      "req_ids": [
+        "REQ-018",
+        "REQ-019",
+        "REQ-020",
+        "REQ-021",
+        "REQ-022",
+        "REQ-042"
+      ]
+    },
+    {
+      "name": "m_imem",
+      "description": "32 KB instruction memory wrapper.",
+      "instances": [],
+      "req_ids": [
+        "REQ-010",
+        "REQ-019",
+        "REQ-042",
+        "REQ-070"
+      ]
+    },
+    {
+      "name": "m_dmem",
+      "description": "256 KB single-port data memory wrapper, PARA_VLEN wide.",
+      "instances": [],
+      "req_ids": [
+        "REQ-011",
+        "REQ-020",
+        "REQ-042",
+        "REQ-061",
+        "REQ-070",
+        "REQ-079"
+      ]
+    },
+    {
+      "name": "m_apb_master",
+      "description": "APB4 requester for MMIO accesses; pulses sts.err on PSLVERR.",
+      "instances": [],
+      "req_ids": [
+        "REQ-016",
+        "REQ-085",
+        "REQ-017",
+        "REQ-086",
+        "REQ-028",
+        "REQ-029",
+        "REQ-030",
+        "REQ-038",
+        "REQ-041",
+        "REQ-044",
+        "REQ-055",
+        "REQ-056"
+      ]
+    },
+    {
+      "name": "m_soc_csr",
+      "description": "Tool-generated APB4 CSR slave.",
+      "instances": [],
+      "req_ids": [
+        "REQ-012",
+        "REQ-013",
+        "REQ-085",
+        "REQ-017",
+        "REQ-024",
+        "REQ-086",
+        "REQ-026",
+        "REQ-027",
+        "REQ-044",
+        "REQ-055"
+      ]
+    },
+    {
+      "name": "m_uart",
+      "description": "UART 8N1 transmitter.",
+      "instances": [],
+      "req_ids": [
+        "REQ-012",
+        "REQ-027",
+        "REQ-038",
+        "REQ-041",
+        "REQ-063"
+      ]
+    }
+  ],
+  "ambiguity_flags": [],
+  "module_order": [
+    "m_rst_sync",
+    "m_pc_gen",
+    "m_if_id_reg",
+    "m_cpu_dec",
+    "m_imm_gen",
+    "m_regfile",
+    "m_id_ex_reg",
+    "m_alu",
+    "m_branch_unit",
+    "m_mul",
+    "m_ex_mem_reg",
+    "m_lsu",
+    "m_mem_wb_reg",
+    "m_hazard_unit",
+    "m_vpu_dispatch",
+    "m_csr_min",
+    "m_cpu_top",
+    "m_vpu_if",
+    "m_vpu_dec",
+    "m_vpu_csr",
+    "m_vpu_ctrl",
+    "m_vpu_regfile",
+    "m_vpu_lsu",
+    "m_lane_alu",
+    "m_lane_mul",
+    "m_lane_narrow",
+    "m_vpu_lane",
+    "m_vpu_reduce",
+    "m_vpu_perf",
+    "m_vpu_top",
+    "m_soc_bus",
+    "m_host_ld",
+    "m_imem",
+    "m_dmem",
+    "m_apb_master",
+    "m_soc_csr",
+    "m_uart",
+    "m_soc_top"
+  ]
+}

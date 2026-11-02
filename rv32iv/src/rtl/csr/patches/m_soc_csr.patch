@@ -1,0 +1,34 @@
+--- a/m_soc_csr.sv (generated)
++++ b/m_soc_csr.sv
+@@ -23,7 +23,11 @@
+   input [15:0] i_paddr,
+   input i_protect_en,
+   input i_slverr_en,
++  // PPROT[0] (privileged) and PPROT[2] (instruction/data) are not used by design:
++  // only PPROT[1] (secure/non-secure) is checked by the protection logic.
++  /* verilator lint_off UNUSEDSIGNAL */
+   input [2:0] i_pprot,
++  /* verilator lint_on UNUSEDSIGNAL */
+   input [31:0] i_pwdata,
+   input i_pwrite,
+   input i_penable,
+@@ -57,7 +61,10 @@
+   logic apb_write;
+   logic apb_read;
+   logic [15:0] reg_address;
++  // Registers are at most 16 bits wide, so write-data bits [31:16] are never used by design.
++  /* verilator lint_off UNUSEDSIGNAL */
+   logic [31:0] reg_pwdata;
++  /* verilator lint_on UNUSEDSIGNAL */
+   logic reg_slverr;
+   logic apb_read_en;
+   logic apb_write_en;
+@@ -99,7 +106,7 @@
+   assign apb_setup = i_psel & ~i_penable;
+   assign apb_protect = i_protect_en ? ~i_pprot[1] : 1'b1;
+   assign apb_slverr = i_slverr_en ? (~apb_protect      //error in protection
+-                      | (|i_paddr[1:0]) //error in address 
++                      | ((|i_paddr[1:0]) & i_pwrite) //error in address (writes only; reads never raise PSLVERR)
+                       | (~&i_pstrb & i_pwrite)) : 1'b0;    //error in pstrb signal
+   assign apb_complete = apb_setup & (~apb_slverr);
+   assign apb_write = i_pwrite & apb_complete;

@@ -1,0 +1,31 @@
+{
+  "module": "m_soc_csr",
+  "parent": "m_soc_top",
+  "asynchronous": false,
+  "registers": [
+    "ctrl",
+    "sts",
+    "result",
+    "cycles",
+    "uart_tx",
+    "uart_cfg"
+  ],
+  "fields": 15,
+  "files": [
+    "m_soc_csr"
+  ],
+  "tool": "APB-CSR-Generator",
+  "ports": "module m_soc_csr\nbus / clocks: i_bus_clk, i_bus_rstn, i_paddr, i_protect_en, i_slverr_en, i_pprot, i_pwdata, i_pwrite, i_penable, i_psel, i_pstrb, o_pslverr, o_pready, o_prdata\nregister ports:\n  output o_ctrl_start\n  input i_hw_wdata_ctrl_start\n  input i_hw_we_ctrl_start\n  output o_sts_err\n  input i_hw_wdata_sts_err\n  input i_hw_we_sts_err\n  output o_sts_done\n  output o_sts_busy\n  output [3:0] o_result_label\n  input [31:0] i_cycles_cnt\n  input i_uart_tx_busy\n  output o_uart_tx_send\n  input i_hw_wdata_uart_tx_send\n  input i_hw_we_uart_tx_send\n  output [7:0] o_uart_tx_data\n  output [15:0] o_uart_cfg_baud_div",
+  "req_ids": [
+    "REQ-012",
+    "REQ-013",
+    "REQ-017",
+    "REQ-024",
+    "REQ-026",
+    "REQ-027",
+    "REQ-044",
+    "REQ-052",
+    "REQ-055",
+    "REQ-063"
+  ]
+}

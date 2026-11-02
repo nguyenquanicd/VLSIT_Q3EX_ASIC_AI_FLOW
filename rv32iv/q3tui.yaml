@@ -1,0 +1,9 @@
+pipeline:
+  auto_approve: true
+  auto_answer: true
+  flow: spec
+  step_options:
+    fpga_synth:
+      part: 10AX115N2F40E2LG
+team:
+  enabled: true

@@ -1,0 +1,140 @@
+[
+  {
+    "id": "Q-S1",
+    "question": "How many cycles shall `vwredsum` (reduction across lanes) take?",
+    "blocking": false,
+    "default_assumption": "Multi-cycle, not fixed by this spec; the golden model checks values only, not latency",
+    "kind": "design_choice",
+    "options": [
+      {
+        "label": "Multi-cycle, latency not fixed",
+        "description": "Simplest adder tree reuse; latency not checked",
+        "impact": "smaller area, easier timing; no cycle-exact test"
+      },
+      {
+        "label": "Single cycle",
+        "description": "Full adder tree across lanes in one pass",
+        "impact": "larger combinational path, may limit 200 MHz; fixed latency"
+      }
+    ]
+  },
+  {
+    "id": "Q-S2",
+    "question": "Does `vnclip` use rounding mode vxrm = 0 (round-to-nearest-up) and is the golden model written accordingly?",
+    "blocking": false,
+    "default_assumption": "vxrm = 0",
+    "kind": "spec_gap",
+    "options": [
+      {
+        "label": "vxrm = 0 (round-to-nearest-up)",
+        "description": "RVV default, matches Spike",
+        "impact": "small rounding logic in m_lane_narrow"
+      },
+      {
+        "label": "Truncate (vxrm = 2)",
+        "description": "No rounding",
+        "impact": "less logic; golden model must match"
+      }
+    ]
+  },
+  {
+    "id": "Q-S3",
+    "question": "Shall `sb`/`sh` to MMIO be blocked in `m_lsu` or reach APB and raise `sts.err`?",
+    "blocking": false,
+    "default_assumption": "Reach APB, `PSLVERR` sets `sts.err`",
+    "kind": "spec_gap",
+    "options": [
+      {
+        "label": "Reach APB, PSLVERR sets sts.err",
+        "description": "No extra logic in m_lsu",
+        "impact": "error visible in sts.err"
+      },
+      {
+        "label": "Block in m_lsu and set sts.err",
+        "description": "m_lsu detects partial MMIO accesses",
+        "impact": "extra logic; no APB transfer"
+      }
+    ]
+  },
+  {
+    "id": "Q-S4",
+    "question": "How is `i_start_req` sampled (level or rising edge) and what clears it?",
+    "blocking": false,
+    "default_assumption": "Level 1 for at least 1 cycle sets `ctrl.start`; firmware clears it",
+    "kind": "spec_gap",
+    "options": [
+      {
+        "label": "Level, min 1 cycle",
+        "description": "Set while level is 1; firmware clears",
+        "impact": "a held-high pin re-arms after clear"
+      },
+      {
+        "label": "Rising-edge detect",
+        "description": "One request per edge",
+        "impact": "one extra flop; no re-arm while held"
+      }
+    ]
+  },
+  {
+    "id": "Q-S5",
+    "question": "Is the memory initialization via the flow's init file acceptable under rule P2, and which Quartus mechanism is used?",
+    "blocking": false,
+    "default_assumption": "Init file inside the wrappers, acceptable under P2",
+    "kind": "design_choice",
+    "options": [
+      {
+        "label": "Init file inside wrappers",
+        "description": "Quartus MIF/HEX attached to inferred RAM",
+        "impact": "no RTL initial; rule owner must confirm"
+      },
+      {
+        "label": "Host/testbench load only",
+        "description": "No init file",
+        "impact": "FPGA always needs host load"
+      }
+    ]
+  },
+  {
+    "id": "Q-S6",
+    "question": "Are LMUL 2 and 4 required in v0.1, and what is the response to an unsupported `vsetvli` setting?",
+    "blocking": false,
+    "default_assumption": "LMUL = 1 only; unsupported settings are treated as an illegal instruction",
+    "kind": "spec_gap",
+    "options": [
+      {
+        "label": "LMUL=1 only, illegal instruction otherwise",
+        "description": "Halt with o_err_illegal",
+        "impact": "simplest VPU"
+      },
+      {
+        "label": "Support LMUL 2/4",
+        "description": "Multi-register groups",
+        "impact": "more control logic and tests"
+      }
+    ]
+  },
+  {
+    "id": "Q-S7",
+    "question": "Does the tool-generated `m_soc_csr` stay as a temporary rule exception, and who approves the waiver?",
+    "blocking": false,
+    "default_assumption": "Temporary exception, kept in `csr/`, waived in lint",
+    "kind": "design_choice",
+    "options": [
+      {
+        "label": "Temporary waiver",
+        "description": "Use tool output as-is",
+        "impact": "lint waiver, approver needed"
+      },
+      {
+        "label": "Fix tool template",
+        "description": "Generate rule-compliant RTL",
+        "impact": "tool change effort"
+      },
+      {
+        "label": "Port-renaming wrapper",
+        "description": "Fixes port names only",
+        "impact": "extra module; internal names remain"
+      }
+    ]
+  }
+]

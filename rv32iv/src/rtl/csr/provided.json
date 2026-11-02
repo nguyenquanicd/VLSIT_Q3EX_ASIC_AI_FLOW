@@ -1,0 +1,19 @@
+{
+  "m_soc_csr": {
+    "kind": "csr",
+    "parent": "m_soc_top",
+    "req_ids": [
+      "REQ-012",
+      "REQ-013",
+      "REQ-017",
+      "REQ-024",
+      "REQ-026",
+      "REQ-027",
+      "REQ-044",
+      "REQ-052",
+      "REQ-055",
+      "REQ-063"
+    ],
+    "instances": []
+  }
+}

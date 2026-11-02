@@ -1,0 +1,157 @@
+{
+  "summary": "I found no contradictions that stop the flow, only warnings. There is no `config/rtl_rules.md`, so the stack is just the default rules and nothing is overridden. I applied the style_lint change request by adding a `u_` alternative with the same 30-character limit to the signal-name-style regex. Section 2 requires `u_<function>` instance names, and Verible's signal-name-style also checks instance names. `verible_check_flags` accepted all the flags together, and `verible_lint` with the new signal-name-style regex gave no findings. The formatter only gets `--indentation_spaces=2` (FIL-03); the rules give no other layout values. The 30-character limit is enforced by the regexes, using `([x]?){N}` instead of `{m,n}` because a comma would break the flag. Many rules are about design meaning or constructs Verible has no rule for, so they are listed as not checkable.",
+  "findings": [
+    {
+      "severity": "warning",
+      "ids": [
+        "ENM-03",
+        "COM-04"
+      ],
+      "problem": "ENM-03 lets an FSM skip the safe recovery state when the spec says the unused encodings are unreachable and the project accepts don't-care 'per COM-04'. COM-04 allows an 'x default only for a full-case `casez`. A plain `case` default must always assign a defined value. An FSM written with plain `case` (COM-03 default) can therefore never use the ENM-03 exception, and the exception only works if the state decode is a `casez`.",
+      "suggestion": "In ENM-03, change the exception to: \"unless the spec states they are unreachable, the project accepts don't-care, and the state decode is a full-case `casez` per COM-04\". Or drop the exception so every FSM always recovers."
+    },
+    {
+      "severity": "warning",
+      "ids": [
+        "COM-03"
+      ],
+      "problem": "COM-03 says every `case`/`casez` MUST have an explicit `default`, and also allows `unique case`. Verible's case-missing-default exempts `unique`/`unique0` case statements, so a `unique case` without a default passes lint. Only the generator and the judge can catch it.",
+      "suggestion": "Add to COM-03: \"A `unique case` also has an explicit `default`.\" The judge then checks it, since Verible cannot."
+    },
+    {
+      "severity": "warning",
+      "ids": [
+        "P6"
+      ],
+      "problem": "P6 bans every plain `always`. Verible's always-comb only flags `always @*`, so `always @(posedge clk)` is not caught. The flags cover only part of P6.",
+      "suggestion": "No change to the rules. Q3TUI's code checks and the judge must cover the other plain `always` forms."
+    },
+    {
+      "severity": "warning",
+      "ids": [
+        "CMT-05"
+      ],
+      "problem": "CMT-05 limits comment lines to 100 characters, but code lines have no limit. Verible's line-length cannot be limited to comments, so the flag (length 100) also applies to code lines, which is stricter than the rule.",
+      "suggestion": "Either accept 100 characters for all lines, or reword CMT-05 as \"Any source line MUST NOT exceed 100 characters\" so the rule matches what lint enforces."
+    },
+    {
+      "severity": "warning",
+      "ids": [
+        "NAM-07",
+        "NAM-04"
+      ],
+      "problem": "NAM-07 (30 characters) is only half enforced. Verible checks ports, signals, parameters, localparams, enum type names, generate labels and instances (u_). It has no rule for module names, enum members (ENUM_*) or process labels (p_ff_/p_com_). Those lengths, and the module m_ pattern, are left to Q3TUI's code (max_len 30) and the judge.",
+      "suggestion": "No change to the rules. These names are checked by Q3TUI's naming profile (max_len 30, module_re, enum_re, proc_*_re), not by Verible."
+    },
+    {
+      "severity": "warning",
+      "ids": [
+        "NAM-04",
+        "NAM-05",
+        "NAM-08",
+        "TYP-02"
+      ],
+      "problem": "Two examples do not follow the rules. NAM-05 uses `o_irq_n`, but `irq` is not in the NAM-08 table (NAM-04 allows only abbreviations from it, and the table gives `int` for interrupt). The TYP-02 inout example uses `PAD_W`, which does not follow the PARA_ pattern from the naming table.",
+      "suggestion": "In NAM-05 use an example that follows NAM-08 (for example `o_int_timer_n`), or add `irq` to the NAM-08 table. In the TYP-02 example write `io_pad` with `[PARA_PAD_W-1:0]`."
+    }
+  ],
+  "mapping": [
+    "FIL-03: no-tabs",
+    "P29: no-tabs",
+    "CMT-05: line-length=length:100 (Verible cannot limit comments only, so code lines are bounded too)",
+    "P4: forbid-defparam",
+    "P6: always-comb (catches only `always @*`, not other plain `always` forms)",
+    "SEQ-01: always-ff-non-blocking",
+    "COM-03: case-missing-default (a `unique case` is exempt in Verible, though COM-03 asks for an explicit default)",
+    "COM-06: explicit-function-lifetime",
+    "PAR-01: explicit-parameter-storage-type",
+    "HIE-01: module-filename, one-module-per-file",
+    "HIE-03: module-port, module-parameter",
+    "P13: module-port, module-parameter (positional connections; `.*` is not checked)",
+    "ENM-01: typedef-enums, enum-name-style (type name <name>_type_def, 30 characters)",
+    "HIE-04: generate-label, generate-label-prefix (gen_<function>, 30 characters)",
+    "HIE-05: legacy-genvar-declaration",
+    "P14: invalid-system-task-function (bans $random, $psprintf and similar; it is not an allow-list for the PAR-04 functions)",
+    "NAM-07 + Section 2 table (parameter names): parameter-name-style PARA_ (30 characters) and LPARA_ (30 characters)",
+    "NAM-07 + Section 2 table (signal names): signal-name-style i_/o_/io_/reg_/w_/u_ (30 characters) plus the loop index idx and genvar gen_idx; the u_ alternative was added from the style_lint change request and was proven with verible_lint (no findings)"
+  ],
+  "not_checkable": [
+    "SCP-01",
+    "SCP-02",
+    "NAM-01",
+    "NAM-02",
+    "NAM-03",
+    "NAM-04",
+    "NAM-05",
+    "NAM-06",
+    "NAM-08",
+    "TYP-01",
+    "TYP-02",
+    "TYP-03",
+    "TYP-04",
+    "TYP-05",
+    "PAR-02",
+    "PAR-03",
+    "PAR-04",
+    "ENM-02",
+    "ENM-03",
+    "ENM-04",
+    "ENM-05",
+    "COM-01",
+    "COM-02",
+    "COM-04",
+    "COM-05",
+    "ARI-01",
+    "ARI-02",
+    "ARI-03",
+    "ARI-04",
+    "SEQ-02",
+    "SEQ-03",
+    "SEQ-04",
+    "RST-01",
+    "RST-02",
+    "RST-03",
+    "RST-04",
+    "CLK-01",
+    "CLK-02",
+    "CLK-03",
+    "CLK-04",
+    "HIE-02",
+    "HIE-06",
+    "HIE-07",
+    "FIL-01",
+    "FIL-02",
+    "CMT-01",
+    "CMT-02",
+    "CMT-03",
+    "CMT-04",
+    "PRT-01",
+    "PRT-02",
+    "PRT-03",
+    "PRT-04",
+    "P1",
+    "P2",
+    "P3",
+    "P5",
+    "P7",
+    "P8",
+    "P9",
+    "P10",
+    "P11",
+    "P12",
+    "P15",
+    "P16",
+    "P17",
+    "P18",
+    "P19",
+    "P20",
+    "P21",
+    "P22",
+    "P23",
+    "P24",
+    "P25",
+    "P26",
+    "P27",
+    "P28"
+  ]
+}
