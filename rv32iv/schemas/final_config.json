@@ -1,0 +1,355 @@
+{
+  "metadata": {
+    "ip_name": "rv32_vpu_mnist",
+    "spec_revision": "0.3",
+    "phase": 2,
+    "gate_status": "approved",
+    "gate_2_approved": true,
+    "approved_at": "2026-10-31T14:10:54",
+    "top_module": "m_soc_top",
+    "rejected_overrides": []
+  },
+  "parameters": {
+    "PARA_VLEN": {
+      "value": "128",
+      "default": "128",
+      "type": "parameter logic [31:0]",
+      "changed_from_default": false,
+      "confirmed_by_user": true,
+      "locked": false,
+      "req_ids_affected": [
+        "REQ-004",
+        "REQ-005",
+        "REQ-011",
+        "REQ-020",
+        "REQ-025",
+        "REQ-033",
+        "REQ-045",
+        "REQ-047",
+        "REQ-048",
+        "REQ-050",
+        "REQ-051",
+        "REQ-058",
+        "REQ-074"
+      ],
+      "feature_ids_affected": [
+        "FEAT-010"
+      ],
+      "change_reason": null
+    },
+    "PARA_LANE_COUNT": {
+      "value": "4",
+      "default": "4",
+      "type": "parameter logic [31:0]",
+      "changed_from_default": false,
+      "confirmed_by_user": true,
+      "locked": false,
+      "req_ids_affected": [
+        "REQ-025",
+        "REQ-045",
+        "REQ-046",
+        "REQ-047",
+        "REQ-049",
+        "REQ-050",
+        "REQ-062"
+      ],
+      "feature_ids_affected": [
+        "FEAT-010"
+      ],
+      "change_reason": null
+    }
+  },
+  "constraints": {
+    "C1": {
+      "rule": "PARA_VLEN == 128 || PARA_VLEN == 256",
+      "pass": true,
+      "detail": "holds"
+    },
+    "C2": {
+      "rule": "PARA_LANE_COUNT == 1 || PARA_LANE_COUNT == 2 || PARA_LANE_COUNT == 4 || PARA_LANE_COUNT == 8",
+      "pass": true,
+      "detail": "holds"
+    },
+    "C3": {
+      "rule": "PARA_VLEN % (PARA_LANE_COUNT * 32) == 0",
+      "pass": true,
+      "detail": "holds"
+    },
+    "C4": {
+      "rule": "PARA_VLEN >= PARA_LANE_COUNT * 32",
+      "pass": true,
+      "detail": "holds"
+    }
+  },
+  "style_constraints": {
+    "source_file": "rtl_rule_default.md",
+    "natural_language_additions": [],
+    "lint_rules": [
+      {
+        "id": "STYLE-001",
+        "source": "rtl_rule.md",
+        "rule": "0. How to apply this document (for AI agents)"
+      },
+      {
+        "id": "STYLE-002",
+        "source": "rtl_rule.md",
+        "rule": "1. Scope"
+      },
+      {
+        "id": "STYLE-003",
+        "source": "rtl_rule.md",
+        "rule": "2. Naming (single source)"
+      },
+      {
+        "id": "STYLE-004",
+        "source": "rtl_rule.md",
+        "rule": "3. Declarations and data types"
+      },
+      {
+        "id": "STYLE-005",
+        "source": "rtl_rule.md",
+        "rule": "3.1 Data types and ports"
+      },
+      {
+        "id": "STYLE-006",
+        "source": "rtl_rule.md",
+        "rule": "3.2 Parameters and constants"
+      },
+      {
+        "id": "STYLE-007",
+        "source": "rtl_rule.md",
+        "rule": "3.3 Enums (finite-state machines and coded fields)"
+      },
+      {
+        "id": "STYLE-008",
+        "source": "rtl_rule.md",
+        "rule": "4. Combinational logic"
+      },
+      {
+        "id": "STYLE-009",
+        "source": "rtl_rule.md",
+        "rule": "5. Arithmetic and widths"
+      },
+      {
+        "id": "STYLE-010",
+        "source": "rtl_rule.md",
+        "rule": "6. Sequential logic, clocks, and resets"
+      },
+      {
+        "id": "STYLE-011",
+        "source": "rtl_rule.md",
+        "rule": "6.1 Flip-flops"
+      },
+      {
+        "id": "STYLE-012",
+        "source": "rtl_rule.md",
+        "rule": "6.2 Reset policy"
+      },
+      {
+        "id": "STYLE-013",
+        "source": "rtl_rule.md",
+        "rule": "6.3 Clock domains and clock gating"
+      },
+      {
+        "id": "STYLE-014",
+        "source": "rtl_rule.md",
+        "rule": "7. Hierarchy, instances, generate, memories"
+      },
+      {
+        "id": "STYLE-015",
+        "source": "rtl_rule.md",
+        "rule": "8. File template and structure"
+      },
+      {
+        "id": "STYLE-016",
+        "source": "rtl_rule.md",
+        "rule": "8.1 Structure"
+      },
+      {
+        "id": "STYLE-017",
+        "source": "rtl_rule.md",
+        "rule": "8.2 Template"
+      },
+      {
+        "id": "STYLE-018",
+        "source": "rtl_rule.md",
+        "rule": "8.3 Structural top example (`m_design_top.sv`)"
+      },
+      {
+        "id": "STYLE-019",
+        "source": "rtl_rule.md",
+        "rule": "9. Standard protocol interface naming"
+      },
+      {
+        "id": "STYLE-020",
+        "source": "rtl_rule.md",
+        "rule": "10. Prohibited constructs (single location)"
+      },
+      {
+        "id": "STYLE-021",
+        "source": "rtl_rule.md",
+        "rule": "11. Tapeout readiness checklist"
+      },
+      {
+        "id": "STYLE-022",
+        "source": "rtl_rule.md",
+        "rule": "12. Comments and assertions"
+      }
+    ]
+  },
+  "feature_matrix": {
+    "FEAT-001": {
+      "enabled": true,
+      "mandatory": true,
+      "parameters_driving": [],
+      "req_ids": [
+        "REQ-001",
+        "REQ-002",
+        "REQ-003",
+        "REQ-084",
+        "REQ-035",
+        "REQ-066",
+        "REQ-075",
+        "REQ-076"
+      ]
+    },
+    "FEAT-002": {
+      "enabled": true,
+      "mandatory": true,
+      "parameters_driving": [],
+      "req_ids": [
+        "REQ-052",
+        "REQ-053",
+        "REQ-073"
+      ]
+    },
+    "FEAT-003": {
+      "enabled": true,
+      "mandatory": true,
+      "parameters_driving": [
+        "PARA_VLEN",
+        "PARA_LANE_COUNT"
+      ],
+      "req_ids": [
+        "REQ-004",
+        "REQ-005",
+        "REQ-006",
+        "REQ-007",
+        "REQ-008",
+        "REQ-033",
+        "REQ-054",
+        "REQ-058",
+        "REQ-059",
+        "REQ-060",
+        "REQ-062",
+        "REQ-074",
+        "REQ-077",
+        "REQ-078",
+        "REQ-079",
+        "REQ-083"
+      ]
+    },
+    "FEAT-004": {
+      "enabled": true,
+      "mandatory": true,
+      "parameters_driving": [],
+      "req_ids": [
+        "REQ-009",
+        "REQ-087",
+        "REQ-031",
+        "REQ-032",
+        "REQ-080",
+        "REQ-081"
+      ]
+    },
+    "FEAT-005": {
+      "enabled": true,
+      "mandatory": true,
+      "parameters_driving": [
+        "PARA_VLEN"
+      ],
+      "req_ids": [
+        "REQ-010",
+        "REQ-011",
+        "REQ-057",
+        "REQ-061",
+        "REQ-082"
+      ]
+    },
+    "FEAT-006": {
+      "enabled": true,
+      "mandatory": true,
+      "parameters_driving": [],
+      "req_ids": [
+        "REQ-016",
+        "REQ-085",
+        "REQ-017",
+        "REQ-024",
+        "REQ-086",
+        "REQ-028",
+        "REQ-029",
+        "REQ-030",
+        "REQ-055",
+        "REQ-056"
+      ]
+    },
+    "FEAT-007": {
+      "enabled": true,
+      "mandatory": true,
+      "parameters_driving": [],
+      "req_ids": [
+        "REQ-012",
+        "REQ-063"
+      ]
+    },
+    "FEAT-008": {
+      "enabled": true,
+      "mandatory": true,
+      "parameters_driving": [
+        "PARA_VLEN"
+      ],
+      "req_ids": [
+        "REQ-018",
+        "REQ-019",
+        "REQ-020",
+        "REQ-021",
+        "REQ-022",
+        "REQ-023"
+      ]
+    },
+    "FEAT-009": {
+      "enabled": true,
+      "mandatory": true,
+      "parameters_driving": [],
+      "req_ids": [
+        "REQ-013"
+      ]
+    },
+    "FEAT-010": {
+      "enabled": true,
+      "mandatory": false,
+      "parameters_driving": [
+        "PARA_VLEN",
+        "PARA_LANE_COUNT"
+      ],
+      "req_ids": [
+        "REQ-045",
+        "REQ-046",
+        "REQ-047",
+        "REQ-051"
+      ]
+    },
+    "FEAT-011": {
+      "enabled": true,
+      "mandatory": true,
+      "parameters_driving": [],
+      "req_ids": [
+        "REQ-040",
+        "REQ-041",
+        "REQ-042",
+        "REQ-043",
+        "REQ-044"
+      ]
+    }
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "part": "10AX115N2F40E2LG",
+  "before": {
+    "wns_ns": 0.416,
+    "lut": 8690,
+    "ff": 6646
+  },
+  "missed": [],
+  "history": [
+    {
+      "iteration": 1,
+      "wns_ns": -0.585,
+      "lut": 11160,
+      "ff": 6622,
+      "fixes": [
+        {
+          "id": "F1",
+          "target": "rtl",
+          "module": "m_lane_mul",
+          "change": "Replace the unsigned multiply plus the w_corr_a / w_corr_b subtractions (w_prod_s = w_prod_u - w_corr_a - w_corr_b) with a single native signed 8x8 multiply per element: w_prod_s = 16'($signed(w_a) * $signed(w_b)). The result is the same signed 16-bit product, with no fabric adders after the DSP.",
+          "why": "In paths.rpt the DSP output (mult_2~mac resulta, arrival 3.935 ns) goes through add_4~38, add_4~1, add_5~1 and add_5~5 through add_5~25 and w_pass_data[0]~170. These adders are the sign-correction subtractors and take about 1.5 ns (3.935 to 5.477 ns). The slack is -0.585 ns.",
+          "expected": "Removes both carry-chain adder stages from the worst path, about 1.4-1.5 ns, enough to close the -0.585 ns WNS. It also removes the fabric adders: 4 elements x 2 subtractors per lane x 4 lanes.",
+          "risk": "The synthesis tool must infer a signed 8x8 DSP mode. If it still splits the multiply, the gain is smaller. Functionally identical, since the product range -16256..16384 fits in 16 bits.",
+          "handed_off": {
+            "flow": "rtl",
+            "step": "rtl",
+            "at": "2026-10-31T20:50:56"
+          }
+        },
+        {
+          "id": "F2",
+          "target": "rtl",
+          "module": "m_vpu_top",
+          "change": "Take the vwmul-dependent word index out of the regfile-read to lane path. Compute w_src_pass / w_word_idx and the lane operand-select controls from registered or pass-index-only signals. For example, register a one-bit is_vwmul copy in the control stage (or hold the per-lane word index in a register updated at the pass boundary) so that the 1036-fanout decode net is not on the combinational path from reg_instr.",
+          "why": "The path starts with reg_instr[4], goes through u_vpu_dec reduce_nor_0~0 (fanout 10) and i242 (fanout 1036), then through the regfile Mux_383 levels and Select_319. That is about 1.7 ns of the 5.754 ns before the multiplier.",
+          "expected": "Takes about 0.5-0.9 ns off the pre-DSP section by cutting the high-fanout decode out of the read-mux select. This gives margin for the multiplier path.",
+          "risk": "Needs a flop for the registered flag and must be aligned with the pass index timing, so it does not change cycle behaviour. The gain is only useful if the first fix is not enough on its own.",
+          "handed_off": {
+            "flow": "rtl",
+            "step": "rtl",
+            "at": "2026-10-31T20:50:56"
+          }
+        }
+      ],
+      "after": {
+        "wns_ns": -0.002,
+        "lut": 10879,
+        "ff": 6623
+      },
+      "sdc": "dc96cae7e4f3",
+      "clocks": "i_clk_core 200 MHz"
+    },
+    {
+      "iteration": 2,
+      "wns_ns": -0.002,
+      "lut": 10879,
+      "ff": 6623,
+      "fixes": [
+        {
+          "id": "F6",
+          "target": "rtl",
+          "module": "m_vpu_reduce",
+          "change": "Add a pipeline register between the per-lane partial sums and the accumulator. Register w_step_sum (a 32-bit reg_step_sum plus a valid bit) and make reg_acc add reg_step_sum instead of w_step_sum. Extend the FSM by one drain cycle, so DONE is raised after the last registered step has been accumulated. o_done stays a 1-cycle pulse and o_wr_data / o_wr_byte_en stay the same. The result is bit-identical and only the multi-cycle latency grows by 1.",
+          "why": "The worst path spends about 3.2 ns (1.96 to 5.17) in the add_1 / add_7 carry chains that go from the regfile read data through the lane-pair adds and the cross-lane add into reg_acc[31]. The slack is -0.002 ns. The module header says the latency is not fixed by the spec beyond the 5-cycle minimum, which m_vpu_ctrl enforces.",
+          "expected": "Splits the roughly 3.2 ns adder chain into two stages (lane sums into reg_step_sum, then the accumulate). This should give several hundred ps of margin on this path and close WNS.",
+          "risk": "One extra cycle of vwredsum latency, so the done handshake with m_vpu_ctrl and any SVA or testbench that checks the exact cycle count must still hold. A small number of FFs (about 33) is added.",
+          "handed_off": {
+            "flow": "rtl",
+            "step": "rtl",
+            "at": "2026-10-31T20:58:37"
+          }
+        },
+        {
+          "id": "F7",
+          "target": "rtl",
+          "module": "m_vpu_top",
+          "change": "Remove the instruction decode from the register-file read-address select. Add a registered flag reg_rf_addr2_pair, sampled in the DEC cycle the same way as reg_is_vwmul. It holds (w_is_vnclip | w_is_vwredsum) and is reset to 0. Use it in p_com_rf_rd_addr in place of the combinational decode, so w_rf_rd_addr_2 = reg_rf_addr2_pair ? w_vs2 + 1 : w_vd. Apply the same pattern to w_vs2 / w_vd if they are still taken from the decoder.",
+          "why": "The path starts at reg_instr[4], goes through u_vpu_dec/reduce_nor_0~0 and u_vpu_dec/i242 (fanout 1037), and then through Mux_383~37/41/48 in the register file. That is about 1.78 ns before the data reaches m_vpu_reduce, and about 0.55 ns of it is the two decoder cells that drive the 1037-fanout net.",
+          "expected": "Removes the two decoder cells (about 0.55 ns) and the 1037-fanout net from the front of the path. Slack on this path improves by about 0.3 to 0.5 ns.",
+          "risk": "The flag must be valid before the first use of read port 2 (RD onward). If m_vpu_lsu samples i_st_data in the same cycle as the start pulse, check the DEC to RD ordering. The cmd_xfer-to-DEC timing must match the one already used for reg_is_vwmul.",
+          "handed_off": {
+            "flow": "rtl",
+            "step": "rtl",
+            "at": "2026-10-31T20:58:37"
+          }
+        }
+      ],
+      "after": {
+        "wns_ns": 0.416,
+        "lut": 8690,
+        "ff": 6646
+      },
+      "sdc": "dc96cae7e4f3",
+      "clocks": "i_clk_core 200 MHz"
+    }
+  ],
+  "iteration": 3,
+  "sdc": "dc96cae7e4f3",
+  "clocks": "i_clk_core 200 MHz",
+  "status": "met",
+  "analysis": "every target is met",
+  "fixes": [],
+  "verified_rtl": "28be3fc2b124"
+}

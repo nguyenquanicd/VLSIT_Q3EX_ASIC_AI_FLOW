@@ -1,0 +1,527 @@
+[
+  {
+    "id": "Q-R1",
+    "question": "The spec names the module's output only as 'internal reset' and gives no port name. I used `o_rst_n_core`. Is that acceptable for m_soc_top wiring?",
+    "blocking": false,
+    "default_assumption": "Output port is o_rst_n_core; PARA_VLEN and PARA_LANE_COUNT are not used by this module and are not declared.",
+    "kind": "spec_gap",
+    "options": [
+      {
+        "label": "o_rst_n_core",
+        "description": "Keeps the core-domain reset name per NAM and the spec's i_rst_n_core -> internal reset.",
+        "impact": "No area/timing impact; top wires it to all state owners."
+      },
+      {
+        "label": "o_rst_n_sync",
+        "description": "Emphasizes that the signal is the synchronized reset.",
+        "impact": "No area/timing impact; only a rename in the top."
+      }
+    ],
+    "module": "m_rst_sync"
+  },
+  {
+    "id": "Q-R2",
+    "question": "RST-04 asks for a test-mode reset override in a wrapper or reset controller. The spec defines no DFT ports, so none was added. Is that acceptable?",
+    "blocking": false,
+    "default_assumption": "No DFT scan reset-bypass port is added (spec lists none).",
+    "kind": "spec_gap",
+    "options": [
+      {
+        "label": "No DFT bypass",
+        "description": "Match the spec ports exactly.",
+        "impact": "Smallest design; reset is not scan-controllable."
+      },
+      {
+        "label": "Add i_dft_scan_en bypass mux",
+        "description": "Reset mux in this module forces o_rst_n_core to i_rst_n_core in scan mode.",
+        "impact": "+1 input port and +1 mux on the reset path; the spec interface must be extended."
+      }
+    ],
+    "module": "m_rst_sync"
+  },
+  {
+    "id": "Q-R4",
+    "question": "The spec gives no port list for m_pc_gen. I assumed inputs i_stall, i_redirect_taken, i_redirect_addr[31:0], i_illegal, i_ebreak and outputs o_pc, o_halt, o_err_illegal. Should m_pc_gen own the halt flags (o_halt / o_err_illegal) and the PC, or should the halt flags live elsewhere in m_cpu_top?",
+    "blocking": false,
+    "default_assumption": "m_pc_gen owns the PC and the sticky halt flags. m_cpu_top connects o_pc to o_imem_addr and the halt flags to the top-level o_halt / o_err_illegal. It also uses o_halt to squash younger IF/ID/ID-EX instructions and to stop the illegal or ebreak instruction itself from executing.",
+    "kind": "design_choice",
+    "options": [
+      {
+        "label": "m_pc_gen owns PC and halt flags (as implemented)",
+        "description": "Halt state sits next to the PC freeze.",
+        "impact": "No extra module; m_cpu_top squashes the pipeline from o_halt."
+      },
+      {
+        "label": "Separate halt module in m_cpu_top; m_pc_gen takes a halt input",
+        "description": "m_pc_gen only freezes the PC.",
+        "impact": "One extra module and port, and a deviation from the prescribed hierarchy."
+      }
+    ],
+    "module": "m_pc_gen"
+  },
+  {
+    "id": "Q-R5",
+    "question": "When i_stall and i_redirect_taken are both 1, which wins? I let the stall win, so a branch held in EX re-presents its redirect when the stall ends. The same rule keeps halt commit off while stalled.",
+    "blocking": false,
+    "default_assumption": "Stall has priority over redirect and over halt commit. m_hazard_unit must not stall the PC in the same cycle that a taken branch in EX must redirect, or must hold the branch in EX.",
+    "kind": "design_choice",
+    "options": [
+      {
+        "label": "Stall wins (as implemented)",
+        "description": "Redirect and halt are applied only in unstalled cycles.",
+        "impact": "Safe for full-pipeline stalls (vector, APB wait); no extra logic."
+      },
+      {
+        "label": "Redirect wins",
+        "description": "A taken branch overrides the PC hold.",
+        "impact": "Could redirect while IF/ID is frozen and lose instructions, so the top must gate the redirect."
+      }
+    ],
+    "module": "m_pc_gen"
+  },
+  {
+    "id": "Q-R6",
+    "question": "The spec gives no port list for m_imm_gen. Should it take only the instruction word and select the immediate format from the opcode itself, or take an immediate-format select from m_cpu_dec?",
+    "blocking": false,
+    "default_assumption": "Ports are i_instr[31:0] and o_imm[31:0]. The format is decoded from the opcode inside the module, so m_cpu_dec does not need to drive a select.",
+    "kind": "design_choice",
+    "options": [
+      {
+        "label": "i_instr only, self-decoding from the opcode",
+        "description": "The module decodes the format itself from the opcode.",
+        "impact": "No extra port. The opcode decode is duplicated with m_cpu_dec, which costs a few gates."
+      },
+      {
+        "label": "i_instr plus i_imm_sel from m_cpu_dec",
+        "description": "m_cpu_dec supplies a format select and m_imm_gen only muxes.",
+        "impact": "Adds a 3-bit port and removes the duplicate opcode decode. The m_cpu_dec interface must be extended, and the step that defines it must agree."
+      }
+    ],
+    "module": "m_imm_gen"
+  },
+  {
+    "id": "Q-R8",
+    "question": "The spec does not define the m_alu port list or op encoding. Should the ALU interface be i_op_a, i_op_b, a 4-bit i_alu_op and o_result? That also means m_cpu_dec and m_id_ex_reg must use the same ENUM_ALU_OP_* codes, and the operand muxing for pc/imm lives outside m_alu.",
+    "blocking": false,
+    "default_assumption": "Ports are i_op_a, i_op_b, i_alu_op[3:0] and o_result. Op codes are ADD=0, SUB=1, SLL=2, SLT=3, SLTU=4, XOR=5, SRL=6, SRA=7, OR=8, AND=9, PASS_B=10. Operand selection happens upstream of m_alu.",
+    "kind": "spec_gap",
+    "options": [
+      {
+        "label": "Dedicated 4-bit op code with PASS_B (as implemented)",
+        "description": "A single combinational module with explicit op codes; lui and auipc map onto PASS_B and ADD with upstream operand muxes.",
+        "impact": "No extra ports; decoder must emit the matching 4-bit alu_op."
+      },
+      {
+        "label": "Use funct3 plus funct7[5] directly as the op code",
+        "description": "The ALU decodes the raw RV32I encoding itself and gets extra inputs for the lui and address cases.",
+        "impact": "Slightly more ALU decode logic and extra control ports; the decoder is simpler."
+      }
+    ],
+    "module": "m_alu"
+  },
+  {
+    "id": "Q-R9",
+    "question": "The spec does not define the decode-to-EX control interface (the signals m_cpu_dec sends through ID/EX), so I defined one: alu_op[3:0], alu_a_pc_sel, alu_b_imm_sel, funct3[2:0], wb_sel[1:0], is_branch/is_jal/is_jalr/is_mul/is_vec, mem_rd, mem_wr, rf_we, plus pc, instr, rs1/rs2 data, imm and rs1/rs2/rd indices. Does m_cpu_dec (and the other EX-side modules) agree with this set and these widths?",
+    "blocking": false,
+    "default_assumption": "Use the interface exactly as written in the file; m_cpu_dec, m_alu, m_branch_unit, m_mul and m_hazard_unit connect to these names and widths.",
+    "kind": "design_choice",
+    "options": [
+      {
+        "label": "Keep the interface as written",
+        "description": "Generic RISC-V control set with a full instruction word forwarded for vector dispatch.",
+        "impact": "About 190 flops; no change to other modules if they follow these ports."
+      },
+      {
+        "label": "Trim to the minimum the other modules actually use",
+        "description": "Drop o_instr and any unused fields once m_cpu_dec and m_alu are fixed.",
+        "impact": "Fewer flops (o_instr alone is 32); requires the neighbouring modules to be settled first."
+      }
+    ],
+    "module": "m_id_ex_reg"
+  },
+  {
+    "id": "Q-R10",
+    "question": "How does the load-use bubble reach this register? I assumed the hazard unit drives i_flush for both a taken branch/jump and the load-use bubble, and drives i_stall for the vector stall, with flush taking priority over stall.",
+    "blocking": false,
+    "default_assumption": "i_flush covers both a taken branch/jump and the load-use bubble; i_stall is the vector stall; flush has priority over stall, as in m_if_id_reg.",
+    "kind": "design_choice",
+    "options": [
+      {
+        "label": "Single i_flush for both causes",
+        "description": "The hazard unit ORs the branch flush and the load-use bubble into one signal.",
+        "impact": "One input, no extra logic in this module."
+      },
+      {
+        "label": "Separate i_bubble input",
+        "description": "Add a distinct bubble input to this register.",
+        "impact": "One extra port and OR term; easier to assert separately in SVA."
+      }
+    ],
+    "module": "m_id_ex_reg"
+  },
+  {
+    "id": "Q-R11",
+    "question": "The spec gives no port list for m_branch_unit. I defined: inputs i_branch, i_jal, i_jalr, i_funct3, i_rs1_data, i_rs2_data, i_pc, i_imm; outputs o_taken, o_target, o_link_data. Is this interface acceptable, in particular that m_branch_unit also produces the jal/jalr link address (PC+4)?",
+    "blocking": false,
+    "default_assumption": "Interface as defined. m_cpu_top and m_id_ex_reg connect to it, and the link value is muxed into the EX result by the parent or m_alu.",
+    "kind": "spec_gap",
+    "options": [
+      {
+        "label": "Keep link address (PC+4) in m_branch_unit",
+        "description": "m_branch_unit outputs o_link_data; the EX result mux selects it for jal/jalr.",
+        "impact": "One 32-bit adder here, none elsewhere. Parent muxing needed."
+      },
+      {
+        "label": "Compute the link address in m_alu or m_id_ex_reg",
+        "description": "Remove o_link_data from m_branch_unit.",
+        "impact": "Smaller branch unit. Link logic moves to another module."
+      }
+    ],
+    "module": "m_branch_unit"
+  },
+  {
+    "id": "Q-R12",
+    "question": "The task assigns REQ-002, while spec.md names this requirement REQ-FUNC-002. Should the file tag use REQ-002 or REQ-FUNC-002?",
+    "blocking": false,
+    "default_assumption": "Tagged REQ-002, exactly as assigned in the task.",
+    "kind": "req_gap",
+    "options": [
+      {
+        "label": "Keep REQ-002 as assigned",
+        "description": "Matches the task and the check tool.",
+        "impact": "No design impact; traceability to spec.md relies on mapping REQ-002 to REQ-FUNC-002."
+      },
+      {
+        "label": "Rename to REQ-FUNC-002",
+        "description": "Matches the ID in spec.md.",
+        "impact": "No design impact; the task's REQ-ID list and the spec IDs would need to be reconciled."
+      }
+    ],
+    "module": "m_mul"
+  },
+  {
+    "id": "Q-R13",
+    "question": "The spec does not define the m_ex_mem_reg port list. Shall the EX/MEM register carry the pc_plus4 link value, the store data (forwarded rs2) and the wb_sel, with the ALU/MUL/vector-vl result muxed before the register into one i_alu_result?",
+    "blocking": false,
+    "default_assumption": "Ports: i_alu_result, i_store_data, i_pc_plus4, i_rd_idx, i_funct3, i_wb_sel, i_mem_rd, i_mem_wr, i_rf_we, i_valid, i_stall. The EX-stage result mux sits outside this module and there is no flush input. The parent m_cpu_top must wire these names.",
+    "kind": "spec_gap",
+    "options": [
+      {
+        "label": "Keep this port list (result mux outside, no flush)",
+        "description": "Matches m_id_ex_reg style and the REQ-FUNC-003 flush scope (IF/ID, ID/EX).",
+        "impact": "Smallest module (~100 flops); parent must provide PC+4 and the result mux."
+      },
+      {
+        "label": "Carry i_pc instead of pc_plus4",
+        "description": "MEM/WB computes PC+4 for jal/jalr link.",
+        "impact": "Same flop count; adds a 32-bit adder in a later stage."
+      }
+    ],
+    "module": "m_ex_mem_reg"
+  },
+  {
+    "id": "Q-R14",
+    "question": "What are the wb_sel encodings produced by m_cpu_dec? The spec does not define them, and m_cpu_dec does not exist yet.",
+    "blocking": false,
+    "default_assumption": "00 = ALU result, 01 = load data, 10 = PC+4, 11 = recovers to ALU result",
+    "kind": "spec_gap",
+    "options": [
+      {
+        "label": "00 ALU, 01 load, 10 PC+4",
+        "description": "Default encoding, kept as a local enum in this module.",
+        "impact": "No area or timing change; m_cpu_dec must match it."
+      },
+      {
+        "label": "Another encoding fixed by m_cpu_dec",
+        "description": "The enum values here are changed to match m_cpu_dec.",
+        "impact": "One-line enum edit; no structural change."
+      }
+    ],
+    "module": "m_mem_wb_reg"
+  },
+  {
+    "id": "Q-R15",
+    "question": "Where does the write-back mux live? m_cpu_top is structural (HIE-02) and the spec lists no separate WB module, so I put the mux inside m_mem_wb_reg and expose o_wb_data.",
+    "blocking": false,
+    "default_assumption": "The write-back mux is inside m_mem_wb_reg.",
+    "kind": "design_choice",
+    "options": [
+      {
+        "label": "Mux inside m_mem_wb_reg",
+        "description": "The module outputs the selected write-back data.",
+        "impact": "Lets m_cpu_top stay purely structural; one 3:1 32-bit mux after the register."
+      },
+      {
+        "label": "Mux elsewhere",
+        "description": "The register exports the three raw sources and wb_sel.",
+        "impact": "More ports; the mux needs another child module."
+      }
+    ],
+    "module": "m_mem_wb_reg"
+  },
+  {
+    "id": "Q-R16",
+    "question": "How should the stage behave during MEM stalls (MMIO/APB wait) versus the vector stall? I assumed i_stall holds the stage (the repeated register-file write is idempotent) and i_flush inserts a bubble. For a pending MMIO access in MEM, m_cpu_top should drive i_flush so the unfinished instruction does not advance.",
+    "blocking": false,
+    "default_assumption": "i_stall holds the stage; i_flush inserts a bubble and has priority over i_stall.",
+    "kind": "spec_gap",
+    "options": [
+      {
+        "label": "Hold on i_stall, bubble on i_flush",
+        "description": "Same convention as m_id_ex_reg.",
+        "impact": "No extra logic; m_cpu_top drives the two controls."
+      },
+      {
+        "label": "Always advance, ignore stall",
+        "description": "The stage never holds.",
+        "impact": "WB data would change during a vector stall, so forwarding would break."
+      }
+    ],
+    "module": "m_mem_wb_reg"
+  },
+  {
+    "id": "Q-R19",
+    "question": "The spec gives m_csr_min no interface, counter width or consumer. Which port and width should it have?",
+    "blocking": false,
+    "default_assumption": "Ports are i_clk_core, i_rst_n_core and o_cycle_cnt[31:0]. Counter width is parameter PARA_CNT_W = 32. It is free-running from reset with no enable, clear or halt-freeze input.",
+    "kind": "spec_gap",
+    "options": [
+      {
+        "label": "Free-running 32-bit counter, clk/rst in, count out",
+        "description": "Minimal interface; the parent m_cpu_top may leave o_cycle_cnt unused or use it later.",
+        "impact": "32 flops plus a 32-bit incrementer; no extra control ports."
+      },
+      {
+        "label": "Add a count-enable input (for example freeze on o_halt)",
+        "description": "Counter stops while the core is halted.",
+        "impact": "One extra input port and an enable on the flops; the parent must wire it."
+      },
+      {
+        "label": "Add a CSR read port (rdcycle-style)",
+        "description": "Expose the count through an instruction-visible read path.",
+        "impact": "Conflicts with the spec decision of no M-mode CSRs and SYSTEM opcodes being illegal, so it needs decoder changes."
+      }
+    ],
+    "module": "m_csr_min"
+  },
+  {
+    "id": "Q-R20",
+    "question": "The task gave only PARA_VLEN and PARA_LANE_COUNT, and neither applies to a cycle counter. Is it acceptable that m_csr_min has no VLEN or lane parameters and adds its own PARA_CNT_W?",
+    "blocking": false,
+    "default_assumption": "Yes. Only PARA_CNT_W (default 32) is declared; PARA_VLEN and PARA_LANE_COUNT are not used here.",
+    "kind": "design_choice",
+    "options": [
+      {
+        "label": "Yes, own PARA_CNT_W only",
+        "description": "The width is a named parameter, so no literal is hardcoded.",
+        "impact": "No unused parameters; m_cpu_top may use the default."
+      },
+      {
+        "label": "Fix width with a localparam instead",
+        "description": "Remove the overridable parameter.",
+        "impact": "Slightly simpler; the width can no longer be overridden."
+      }
+    ],
+    "module": "m_csr_min"
+  },
+  {
+    "id": "Q-R31",
+    "question": "The spec does not define the port list of m_vpu_regfile. I assumed 3 read ports and 1 write port with byte enables. The element-to-byte-enable mask (SEW and vl) is generated outside this module by m_vpu_ctrl or m_vpu_lsu. Is that split right?",
+    "blocking": false,
+    "default_assumption": "3 combinational read ports (vs1, vs2, old vd or store data), 1 write port with PARA_VLEN/8 byte enables, and no internal vl masking.",
+    "kind": "spec_gap",
+    "options": [
+      {
+        "label": "Byte-enable write port, masking done by the writer",
+        "description": "The regfile only applies i_wr_byte_en; the controller derives the tail mask from vl and SEW.",
+        "impact": "Smallest regfile, no vl/SEW inputs; the mask logic sits in the controller."
+      },
+      {
+        "label": "Regfile takes vl and vsew and builds the tail mask itself",
+        "description": "Adds i_vl/i_vsew inputs and the element-mask logic inside the regfile.",
+        "impact": "More ports and logic in the regfile; the controller is simpler; vwmul pair writes still need extra mask handling."
+      }
+    ],
+    "module": "m_vpu_regfile"
+  },
+  {
+    "id": "Q-R47",
+    "question": "What is the width and meaning of i_rd_addr? Spec MEM-001 only says 'Fetch read (i_rd_addr -> o_rd_data)'.",
+    "blocking": false,
+    "default_assumption": "13-bit word index (LPARA_ADDR_W = $clog2(8192)), the same form as i_init_wr_addr[12:0]; m_soc_top / the fetch stage supplies pc[14:2].",
+    "kind": "spec_gap",
+    "options": [
+      {
+        "label": "13-bit word index",
+        "description": "The parent slices pc[14:2]; the wrapper does no byte-address handling.",
+        "impact": "No extra logic in the wrapper."
+      },
+      {
+        "label": "32-bit byte address",
+        "description": "The wrapper slices [14:2] itself and leaves the upper bits unused.",
+        "impact": "Adds unused-bit lint waivers or handling; the port is wider."
+      }
+    ],
+    "module": "m_imem"
+  },
+  {
+    "id": "Q-R48",
+    "question": "The IMEM write enable is taken as i_init_wr_en already qualified by m_host_ld (i_ld_en & i_ld_req & i_ld_wr_en & addr[31:15]==0). Is that the intended split, or should m_imem decode i_ld_* itself? MEM-001 lists i_init_wr_* ports only.",
+    "blocking": false,
+    "default_assumption": "m_host_ld does the decode, and m_imem writes whenever i_init_wr_en = 1.",
+    "kind": "spec_gap",
+    "options": [
+      {
+        "label": "Decode in m_host_ld",
+        "description": "m_imem takes a pre-decoded write enable, address and data.",
+        "impact": "Simple wrapper; matches MEM-001 ports."
+      },
+      {
+        "label": "Decode in m_imem",
+        "description": "m_imem takes the raw i_ld_* signals.",
+        "impact": "Changes the MEM-001 interface; duplicates the REQ-IF-005 decode in the wrapper."
+      }
+    ],
+    "module": "m_imem"
+  },
+  {
+    "id": "Q-R49",
+    "question": "Which mechanism attaches the init file (Q-S5)? RTL carries no attribute or path, so the init file must be assigned in the Quartus project (for example a MIF or HEX assignment on the inferred RAM) or by the testbench's hierarchical load.",
+    "blocking": false,
+    "default_assumption": "No RTL attribute; the flow attaches the init file outside the RTL.",
+    "kind": "design_choice",
+    "options": [
+      {
+        "label": "Assign the init file in the Quartus project",
+        "description": "No RTL attribute; the init file is assigned on the inferred RAM in the Quartus project.",
+        "impact": "RTL stays tool-neutral; the flow owns the path."
+      },
+      {
+        "label": "ram_init_file attribute in RTL",
+        "description": "A Quartus attribute naming the file is placed on reg_mem.",
+        "impact": "Hardcodes the file name and tool in RTL; may trip the pragma rules."
+      }
+    ],
+    "module": "m_imem"
+  },
+  {
+    "id": "Q-R52",
+    "question": "The spec does not define the port names/interface between m_host_ld and m_soc_bus, m_dmem and m_imem. I used row-based i_bus_dmem_* inputs, o_bus_dmem_rd_data, o_dmem_* to m_dmem (en, wr_en, addr = row index, byte_en, wr_data) and o_imem_wr_* (wr_en, wr_addr[12:0], wr_data). Are these the port names the parent m_soc_top and m_soc_bus should use?",
+    "blocking": false,
+    "default_assumption": "Use the port names and row-index addressing (width 18 - log2(PARA_VLEN/8)) as written in m_host_ld.sv.",
+    "kind": "spec_gap",
+    "options": [
+      {
+        "label": "Keep the names chosen in m_host_ld.sv",
+        "description": "m_soc_bus and m_soc_top connect to these names.",
+        "impact": "No change to this module."
+      },
+      {
+        "label": "Rename to a different project convention",
+        "description": "Ports of m_host_ld are renamed and the file is edited.",
+        "impact": "Rework in m_host_ld.sv plus the parent wiring; no area or timing change."
+      }
+    ],
+    "module": "m_host_ld"
+  },
+  {
+    "id": "Q-R53",
+    "question": "The module has no i_rst_n_core port because the host port must work during reset (REQ-042) and the read-hit/lane registers are resetless. Should a reset port be added anyway for the top-level wiring or the SVA bind?",
+    "blocking": false,
+    "default_assumption": "No reset port; the registers are resetless and rewritten every cycle.",
+    "kind": "design_choice",
+    "options": [
+      {
+        "label": "No reset port (default)",
+        "description": "The registers are resetless, so the host port is not gated by reset.",
+        "impact": "No area cost. o_ld_rd_data is X for the first cycle(s) after power-up until the clock has run once."
+      },
+      {
+        "label": "Add an unused reset port",
+        "description": "The port would only exist for uniform parent wiring.",
+        "impact": "One unused-port lint warning; no functional change."
+      }
+    ],
+    "module": "m_host_ld"
+  },
+  {
+    "id": "Q-R61",
+    "question": "The CSR hardware-write port for uart_tx.send is a we/wdata pair, but m_uart only has a clear pulse. How should m_uart expose it?",
+    "blocking": false,
+    "default_assumption": "m_uart outputs a single pulse `o_uart_tx_send_clr`. The parent m_soc_top connects it to `i_hw_we_uart_tx_send` and ties `i_hw_wdata_uart_tx_send` to 1'b0.",
+    "kind": "design_choice",
+    "options": [
+      {
+        "label": "Single clear pulse output; parent ties wdata to 0",
+        "description": "Minimal interface; m_soc_top ties the data input to 0.",
+        "impact": "No area change; the parent needs a constant tie."
+      },
+      {
+        "label": "Add o_hw_we_uart_tx_send and o_hw_wdata_uart_tx_send outputs",
+        "description": "Matches the CSR port names one-to-one.",
+        "impact": "One extra constant output port; no area cost."
+      }
+    ],
+    "module": "m_uart"
+  },
+  {
+    "id": "Q-R62",
+    "question": "If software writes send = 1 in the same cycle as the hardware clear, the CSR gives the software write priority, so send stays 1 and a second byte is sent. Is that acceptable?",
+    "blocking": false,
+    "default_assumption": "Acceptable: firmware polls busy = 0 before writing send (spec 11 step 4), so the case should not occur.",
+    "kind": "spec_gap",
+    "options": [
+      {
+        "label": "Accept (software must poll busy)",
+        "description": "No extra logic.",
+        "impact": "None."
+      },
+      {
+        "label": "Ignore send while busy in m_uart",
+        "description": "Needs extra qualification logic.",
+        "impact": "Small extra logic; does not remove the CSR priority itself."
+      }
+    ],
+    "module": "m_uart"
+  },
+  {
+    "id": "Q-R72",
+    "question": "The new description says m_vpu_ctrl 'owns write-mask generation', but spec section 983 allows the element-to-byte-enable mask (SEW, vl) to come from m_vpu_ctrl or m_vpu_lsu. The current m_vpu_ctrl has no vl/sew/vd inputs or byte-enable outputs, and the lanes build the byte enables. Should m_vpu_ctrl generate the PARA_VLEN/8-bit regfile byte-enable mask itself?",
+    "blocking": false,
+    "default_assumption": "Keep the current ports. m_vpu_ctrl sequences the mask steps through the RD/EXEC/WB strobes and the lane datapath builds the byte enables. No port or top-level change.",
+    "kind": "arch_gap",
+    "options": [
+      {
+        "label": "Keep mask building in the lanes; ctrl only sequences it",
+        "description": "No interface change; the header wording states that ownership means sequencing.",
+        "impact": "No area or timing change; no changes to m_vpu_top or the lanes; the 'owns' wording is only loosely met."
+      },
+      {
+        "label": "Move mask generation into m_vpu_ctrl",
+        "description": "Add vl, vsew, dest-register and mask-width inputs plus a PARA_VLEN/8-bit byte-enable output. m_vpu_top and m_vpu_lane/regfile connections change too.",
+        "impact": "Adds one vl comparator and an element-to-byte decode (~tens of gates); regfile write path timing is slightly longer; top, lane and tests must be reworked."
+      }
+    ],
+    "module": "m_vpu_ctrl"
+  },
+  {
+    "id": "Q-R74",
+    "question": "The PPA request asks for `w_prod_s = 16'($signed(w_a) * $signed(w_b))`, but rule P22 forbids `$signed`, and `check` flags it. I used an equivalent sign-extend-and-truncate multiply. If synthesis still produces fabric adders or a split multiply, shall we grant a P22 waiver for `$signed` in this module?",
+    "blocking": false,
+    "default_assumption": "Keep the P22-compliant sign-extended 16x16 truncated multiply, which is functionally identical. Re-check the Quartus DSP inference and timing report (paths.rpt) after synthesis.",
+    "kind": "design_choice",
+    "options": [
+      {
+        "label": "Keep the sign-extend and truncate form (P22 clean)",
+        "description": "No waiver needed and lint stays clean. The tool may map it to a 16x16 DSP, not a native signed 8x8 mode.",
+        "impact": "No rule exception; the DSP mode and timing gain must be confirmed in synthesis"
+      },
+      {
+        "label": "Waive P22 for `$signed` in m_lane_mul only",
+        "description": "Use `16'($signed(w_a) * $signed(w_b))` exactly as requested. This is the best chance of a native signed 8x8 DSP mode.",
+        "impact": "A rule exception that needs a reviewer; possibly better DSP packing and timing"
+      }
+    ],
+    "module": "m_lane_mul"
+  }
+]

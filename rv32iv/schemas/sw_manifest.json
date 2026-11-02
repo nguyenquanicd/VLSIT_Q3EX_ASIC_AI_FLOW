@@ -1,0 +1,41 @@
+{
+  "prog_dir": "build/tb/programs",
+  "built": true,
+  "toolchain": {
+    "gcc": "riscv64-unknown-elf-gcc",
+    "spike": "spike",
+    "dtc": "dtc"
+  },
+  "problems": [],
+  "tests": [
+    {
+      "tc_id": "TC-056",
+      "files": [
+        "mnist_fw.hex",
+        "mnist_dmem.hex",
+        "mnist_img.hex",
+        "mnist_exp.hex",
+        "mnist.plusargs"
+      ],
+      "external": [],
+      "note": "Unchanged. The files and formats are the same as before. The memory map in tb_top.sv is unchanged: IMEM at 0x0 (32 KB) and DMEM at 0x1000_0000 (256 KB). The plusargs come from mnist.plusargs.",
+      "status": "ready",
+      "missing": []
+    },
+    {
+      "tc_id": "TC-057",
+      "files": [
+        "mnist_fw.hex",
+        "mnist_dmem.hex",
+        "mnist_img.hex",
+        "mnist_exp.hex",
+        "mnist.plusargs"
+      ],
+      "external": [],
+      "note": "Unchanged. It uses the same files as TC-056. The image file holds 100 images of 196 words, and the expected-results file holds 100 x 11 words.",
+      "status": "ready",
+      "missing": []
+    }
+  ],
+  "summary": "I changed nothing in `src/sw/`. The `tb_top.sv` change doesn't affect any file the tests read, and the build reports clean (make had nothing to rebuild).\n\nIn `tb_top.sv` the file-reading helper `tb_readmem` still loads hex text into a 65,536-word buffer. The IMEM and DMEM base addresses are the same. The 25,100-word DMEM image still fits the 256 KB DMEM. Only TC-056 and TC-057 read files. They take them from `build/tb/programs`, or from `+VEC_DIR`. Their own code is unchanged.\n\nThe MNIST data is still synthetic, as in the last run. Trained weights can be passed with `make MODEL=<file.npz>`. I did not open the generated files."
+}

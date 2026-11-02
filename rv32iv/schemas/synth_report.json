@@ -1,0 +1,516 @@
+{
+  "tool": "not run",
+  "pdk": null,
+  "top_module": "m_soc_top",
+  "synthesis": "not run",
+  "corners": {},
+  "note": "synthesis not run: Design Compiler needs a target library: set options.synth.corners: [{name, library: <.db>}] on the rtl step of the flow file",
+  "lint": {
+    "status": "pass",
+    "tool": "verilator",
+    "warnings": 0,
+    "max_warnings": 0
+  },
+  "modules": {
+    "m_rst_sync": {
+      "file": "src/rtl/m_rst_sync.sv",
+      "lines": 47,
+      "req_ids": [
+        "REQ-040",
+        "REQ-044"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_pc_gen": {
+      "file": "src/rtl/m_pc_gen.sv",
+      "lines": 97,
+      "req_ids": [
+        "REQ-003",
+        "REQ-041",
+        "REQ-052",
+        "REQ-053"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_if_id_reg": {
+      "file": "src/rtl/m_if_id_reg.sv",
+      "lines": 81,
+      "req_ids": [
+        "REQ-003",
+        "REQ-084"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_cpu_dec": {
+      "file": "src/rtl/m_cpu_dec.sv",
+      "lines": 551,
+      "req_ids": [
+        "REQ-001",
+        "REQ-002",
+        "REQ-052",
+        "REQ-054",
+        "REQ-073",
+        "REQ-074",
+        "REQ-081",
+        "REQ-083",
+        "REQ-084"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_imm_gen": {
+      "file": "src/rtl/m_imm_gen.sv",
+      "lines": 119,
+      "req_ids": [],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_regfile": {
+      "file": "src/rtl/m_regfile.sv",
+      "lines": 87,
+      "req_ids": [
+        "REQ-035",
+        "REQ-076"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_id_ex_reg": {
+      "file": "src/rtl/m_id_ex_reg.sv",
+      "lines": 182,
+      "req_ids": [],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_alu": {
+      "file": "src/rtl/m_alu.sv",
+      "lines": 102,
+      "req_ids": [
+        "REQ-001"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_branch_unit": {
+      "file": "src/rtl/m_branch_unit.sv",
+      "lines": 114,
+      "req_ids": [
+        "REQ-001",
+        "REQ-003",
+        "REQ-066"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_mul": {
+      "file": "src/rtl/m_mul.sv",
+      "lines": 37,
+      "req_ids": [
+        "REQ-002"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_ex_mem_reg": {
+      "file": "src/rtl/m_ex_mem_reg.sv",
+      "lines": 117,
+      "req_ids": [],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_lsu": {
+      "file": "src/rtl/m_lsu.sv",
+      "lines": 143,
+      "req_ids": [
+        "REQ-001",
+        "REQ-056",
+        "REQ-075"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_mem_wb_reg": {
+      "file": "src/rtl/m_mem_wb_reg.sv",
+      "lines": 121,
+      "req_ids": [],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_hazard_unit": {
+      "file": "src/rtl/m_hazard_unit.sv",
+      "lines": 210,
+      "req_ids": [
+        "REQ-003",
+        "REQ-009",
+        "REQ-029",
+        "REQ-034",
+        "REQ-053",
+        "REQ-066",
+        "REQ-067",
+        "REQ-081",
+        "REQ-084"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_vpu_dispatch": {
+      "file": "src/rtl/m_vpu_dispatch.sv",
+      "lines": 125,
+      "req_ids": [
+        "REQ-009",
+        "REQ-031",
+        "REQ-080",
+        "REQ-081"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_csr_min": {
+      "file": "src/rtl/m_csr_min.sv",
+      "lines": 49,
+      "req_ids": [],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_vpu_if": {
+      "file": "src/rtl/m_vpu_if.sv",
+      "lines": 114,
+      "req_ids": [
+        "REQ-009",
+        "REQ-031",
+        "REQ-032",
+        "REQ-087"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_vpu_dec": {
+      "file": "src/rtl/m_vpu_dec.sv",
+      "lines": 311,
+      "req_ids": [
+        "REQ-004",
+        "REQ-077"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_vpu_csr": {
+      "file": "src/rtl/m_vpu_csr.sv",
+      "lines": 153,
+      "req_ids": [
+        "REQ-004",
+        "REQ-051",
+        "REQ-077",
+        "REQ-078"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_vpu_ctrl": {
+      "file": "src/rtl/m_vpu_ctrl.sv",
+      "lines": 233,
+      "req_ids": [
+        "REQ-008",
+        "REQ-031",
+        "REQ-032",
+        "REQ-036",
+        "REQ-041",
+        "REQ-044",
+        "REQ-059",
+        "REQ-062",
+        "REQ-067",
+        "REQ-087"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_vpu_regfile": {
+      "file": "src/rtl/m_vpu_regfile.sv",
+      "lines": 82,
+      "req_ids": [
+        "REQ-005",
+        "REQ-059"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_vpu_lsu": {
+      "file": "src/rtl/m_vpu_lsu.sv",
+      "lines": 194,
+      "req_ids": [
+        "REQ-005",
+        "REQ-033",
+        "REQ-037",
+        "REQ-041",
+        "REQ-058",
+        "REQ-079"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_lane_alu": {
+      "file": "src/rtl/m_lane_alu.sv",
+      "lines": 190,
+      "req_ids": [
+        "REQ-008",
+        "REQ-059"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_lane_mul": {
+      "file": "src/rtl/m_lane_mul.sv",
+      "lines": 65,
+      "req_ids": [
+        "REQ-006"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_lane_narrow": {
+      "file": "src/rtl/m_lane_narrow.sv",
+      "lines": 133,
+      "req_ids": [
+        "REQ-008",
+        "REQ-060"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_vpu_reduce": {
+      "file": "src/rtl/m_vpu_reduce.sv",
+      "lines": 252,
+      "req_ids": [
+        "REQ-007",
+        "REQ-062"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_vpu_perf": {
+      "file": "src/rtl/m_vpu_perf.sv",
+      "lines": 85,
+      "req_ids": [
+        "REQ-013"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_soc_bus": {
+      "file": "src/rtl/m_soc_bus.sv",
+      "lines": 259,
+      "req_ids": [
+        "REQ-015",
+        "REQ-033",
+        "REQ-034",
+        "REQ-057",
+        "REQ-058",
+        "REQ-079",
+        "REQ-082"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_host_ld": {
+      "file": "src/rtl/m_host_ld.sv",
+      "lines": 179,
+      "req_ids": [
+        "REQ-018",
+        "REQ-019",
+        "REQ-020",
+        "REQ-021",
+        "REQ-022",
+        "REQ-042"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_imem": {
+      "file": "src/rtl/m_imem.sv",
+      "lines": 64,
+      "req_ids": [
+        "REQ-010",
+        "REQ-019",
+        "REQ-042",
+        "REQ-070"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_dmem": {
+      "file": "src/rtl/m_dmem.sv",
+      "lines": 94,
+      "req_ids": [
+        "REQ-011",
+        "REQ-020",
+        "REQ-042",
+        "REQ-061",
+        "REQ-070",
+        "REQ-079"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_apb_master": {
+      "file": "src/rtl/m_apb_master.sv",
+      "lines": 201,
+      "req_ids": [
+        "REQ-016",
+        "REQ-017",
+        "REQ-028",
+        "REQ-029",
+        "REQ-030",
+        "REQ-038",
+        "REQ-041",
+        "REQ-044",
+        "REQ-055",
+        "REQ-056",
+        "REQ-085",
+        "REQ-086"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_soc_csr": {
+      "file": "src/rtl/m_soc_csr.sv",
+      "lines": 335,
+      "req_ids": [
+        "REQ-012",
+        "REQ-013",
+        "REQ-017",
+        "REQ-024",
+        "REQ-026",
+        "REQ-027",
+        "REQ-044",
+        "REQ-052",
+        "REQ-055",
+        "REQ-063"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 88
+    },
+    "m_uart": {
+      "file": "src/rtl/m_uart.sv",
+      "lines": 185,
+      "req_ids": [
+        "REQ-012",
+        "REQ-027",
+        "REQ-038",
+        "REQ-041",
+        "REQ-063"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_cpu_top": {
+      "file": "src/rtl/m_cpu_top.sv",
+      "lines": 661,
+      "req_ids": [
+        "REQ-001",
+        "REQ-027",
+        "REQ-041",
+        "REQ-044",
+        "REQ-052",
+        "REQ-053",
+        "REQ-073",
+        "REQ-084"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_vpu_lane": {
+      "file": "src/rtl/m_vpu_lane.sv",
+      "lines": 300,
+      "req_ids": [
+        "REQ-006",
+        "REQ-008",
+        "REQ-059",
+        "REQ-060"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_vpu_top": {
+      "file": "src/rtl/m_vpu_top.sv",
+      "lines": 599,
+      "req_ids": [
+        "REQ-045",
+        "REQ-046",
+        "REQ-047",
+        "REQ-048",
+        "REQ-049",
+        "REQ-050",
+        "REQ-051"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    },
+    "m_soc_top": {
+      "file": "src/rtl/m_soc_top.sv",
+      "lines": 435,
+      "req_ids": [
+        "REQ-014",
+        "REQ-023",
+        "REQ-024",
+        "REQ-025",
+        "REQ-026",
+        "REQ-027",
+        "REQ-039",
+        "REQ-043",
+        "REQ-064",
+        "REQ-065",
+        "REQ-068",
+        "REQ-069",
+        "REQ-071",
+        "REQ-072"
+      ],
+      "lint": "pass",
+      "lint_warnings": 0,
+      "rule_violations": 0
+    }
+  },
+  "req_ids_tagged": 550,
+  "req_ids_distinct": 87,
+  "rule_profile": "default",
+  "generated_at": "2026-10-31T21:00:36"
+}

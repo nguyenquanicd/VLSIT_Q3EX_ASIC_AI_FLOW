@@ -1,0 +1,112 @@
+{
+  "tool": {
+    "sim": "vcs",
+    "run": "{workdir}/simv"
+  },
+  "rtl_files": [
+    "m_rst_sync.sv",
+    "m_pc_gen.sv",
+    "m_if_id_reg.sv",
+    "m_cpu_dec.sv",
+    "m_imm_gen.sv",
+    "m_regfile.sv",
+    "m_id_ex_reg.sv",
+    "m_alu.sv",
+    "m_branch_unit.sv",
+    "m_mul.sv",
+    "m_ex_mem_reg.sv",
+    "m_lsu.sv",
+    "m_mem_wb_reg.sv",
+    "m_hazard_unit.sv",
+    "m_vpu_dispatch.sv",
+    "m_csr_min.sv",
+    "m_vpu_if.sv",
+    "m_vpu_dec.sv",
+    "m_vpu_csr.sv",
+    "m_vpu_ctrl.sv",
+    "m_vpu_regfile.sv",
+    "m_vpu_lsu.sv",
+    "m_lane_alu.sv",
+    "m_lane_mul.sv",
+    "m_lane_narrow.sv",
+    "m_vpu_reduce.sv",
+    "m_vpu_perf.sv",
+    "m_soc_bus.sv",
+    "m_host_ld.sv",
+    "m_imem.sv",
+    "m_dmem.sv",
+    "m_apb_master.sv",
+    "m_soc_csr.sv",
+    "m_uart.sv",
+    "m_cpu_top.sv",
+    "m_vpu_lane.sv",
+    "m_vpu_top.sv",
+    "m_soc_top.sv"
+  ],
+  "compile": {
+    "ok": true,
+    "errors": []
+  },
+  "run": {
+    "status": "pass",
+    "results": {
+      "S1": {
+        "status": "PASS",
+        "detail": ""
+      },
+      "S2": {
+        "status": "PASS",
+        "detail": ""
+      },
+      "S3": {
+        "status": "PASS",
+        "detail": ""
+      },
+      "S5": {
+        "status": "PASS",
+        "detail": ""
+      },
+      "S4": {
+        "status": "PASS",
+        "detail": ""
+      },
+      "S6": {
+        "status": "PASS",
+        "detail": ""
+      },
+      "S7": {
+        "status": "PASS",
+        "detail": ""
+      },
+      "S8": {
+        "status": "PASS",
+        "detail": ""
+      },
+      "S9": {
+        "status": "PASS",
+        "detail": ""
+      },
+      "S11": {
+        "status": "PASS",
+        "detail": ""
+      },
+      "S12": {
+        "status": "PASS",
+        "detail": ""
+      },
+      "S13": {
+        "status": "PASS",
+        "detail": ""
+      },
+      "S10": {
+        "status": "PASS",
+        "detail": ""
+      }
+    },
+    "reason": "",
+    "log": ".q3tui/rtl_flow/smoke/smoke_run.log"
+  },
+  "status": "pass",
+  "rounds": 0,
+  "triage": []
+}

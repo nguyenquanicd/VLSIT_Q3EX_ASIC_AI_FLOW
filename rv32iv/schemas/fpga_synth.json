@@ -1,0 +1,23 @@
+{
+  "tool": "Quartus Prime 25.1.0 Pro",
+  "template": "arria10",
+  "backend": "quartus",
+  "family": "Arria 10",
+  "part": "10AX115N2F40E2LG",
+  "top": "m_soc_top",
+  "mode": "in_context",
+  "implemented": false,
+  "status": "pass",
+  "runtime_s": 194.4,
+  "log": ".q3tui/fpga/fpga_synth/quartus.log",
+  "warnings": 16,
+  "critical_warnings": 0,
+  "critical_warning_messages": [],
+  "reports": [
+    "utilization.rpt",
+    "utilization_hier.rpt",
+    "timing.rpt",
+    "paths.rpt",
+    "clocks.rpt"
+  ]
+}

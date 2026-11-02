@@ -1,0 +1,50 @@
+[
+  {
+    "id": "SIM1",
+    "question": "Test TC-020: The test overwrites its own data. `TB_RES_BASE` is 0x1000_8000 (tb_top.sv:65), which is DMEM row 2048, and that row is also one of the `rowsA` test rows. In part B the program stores its 48 result words at `TB_RES_BASE`+0..0xBF. The first 4 slots (row 0's data, in program order) land on row 2048 lanes 0..3. Reading row 2048 later returns row 0's words: 00000003, 00010014, 00020025, 00030036. The RTL decodes correctly. Rows 1024, 4096, 8192 and 16383 pass. Fix: choose `rowsA[5]` and `rowsB` so no row falls in the result area (0x1000_8000..0x1000_80BF, rows 2048..2059), for example replace 2048 with 2100 or 3000. Also keep the part-C rows 5, 1030, 8199 and 16380 and their neighbours out of that area.",
+    "blocking": true,
+    "default_assumption": "Keep the spec as written and treat the failing side as the bug.",
+    "kind": "design_choice",
+    "options": []
+  },
+  {
+    "id": "SIM2",
+    "question": "Test TC-042: The UART frame queues are never cleared between baud divisors. `mon_clear()` runs only at the start of the test, but the loop `for di` reuses `tb_uart_rx_data`, `tb_uart_rx_start_ok`, `tb_uart_rx_stop_ok` and `tb_uart_rx_len_ok`. The counts are cumulative: 14, 28, 42, 56, 70, then 73 (70+3). Frame 0 of the last divisor is still byte 00 from divisor 1. The decoder and the RTL (`m_uart`) are not at fault: every bit slot is baud_div clocks and divisor 1 passes. Fix in tc_042: at the top of each `di` iteration, `.delete()` the four `tb_uart_rx_*` queues and `tb_uart_rx_cyc`. Doing that before `host_load_prog` and the `tb_uart_baud` assignment is fine.",
+    "blocking": true,
+    "default_assumption": "Keep the spec as written and treat the failing side as the bug.",
+    "kind": "design_choice",
+    "options": []
+  },
+  {
+    "id": "SIM3",
+    "question": "Test TC-056: The golden vectors exist in build/tb/programs (mnist_fw/dmem/img/exp.hex, mnist.plusargs with IMG_ADDR=10018f30, LOGIT_ADDR=100192c0, DMEM_WORDS=25548, BAUD=1736), but the test never found them. The run passes no plusargs. The src/tb/NOTES.md entry (tb_g10) says the tests fall back to the files in that directory, but tc_056 has no such fallback. It checks the plusargs only and prints DV_TODO. This is a run-configuration or TB gap, not a DUT result. Fix: implement the documented fallback, which reads <+VEC_DIR or build/tb/programs>/mnist_*.hex and mnist.plusargs when the plusargs are absent. Alternatively the run flow passes the contents of mnist.plusargs. Only then will the test check the DUT.",
+    "blocking": true,
+    "default_assumption": "Keep the spec as written and treat the failing side as the bug.",
+    "kind": "design_choice",
+    "options": []
+  },
+  {
+    "id": "SIM4",
+    "question": "Test TC-057: Same cause as TC-056. The golden vector files and mnist.plusargs (NIMG=100) are in build/tb/programs, but tc_057 neither falls back to them as src/tb/NOTES.md says nor receives +FW_HEX/+DMEM_HEX/+IMG_HEX/+EXP_HEX/+IMG_ADDR/+LOGIT_ADDR, so it prints DV_TODO and never runs. Fix: add the default lookup of the vector directory, or pass the plusargs from the run flow.",
+    "blocking": true,
+    "default_assumption": "Keep the spec as written and treat the failing side as the bug.",
+    "kind": "design_choice",
+    "options": []
+  },
+  {
+    "id": "SIM5",
+    "question": "Test TC-057: The APB protocol checker in tb_top.sv (mon_main, about lines 1038-1048) is not qualified by reset, so a reset that aborts an APB transfer counts as a violation. This is the most likely cause; I did not confirm it in a waveform or with a violation-time print. TC-057 runs 100 images back to back. After o_sts_done rises, the first dmem_rd of the logits calls host_begin, which asserts i_rst_n_core immediately. The firmware is still running at that point (it polls uart_tx.busy and sends the UART byte), so an APB transfer is usually in flight. m_apb_master resets asynchronously to IDLE, as the spec requires (ERR-006, REQ-044: reset aborts the in-flight APB transfer; REQ-041). PSEL then drops before PREADY. The monitor's check 'PSEL dropped before completion' (a_inflight_prev && !a_psel) increments tb_apb_viol_cnt, and mon_check_all fails at the end of TC-057. In the RTL, address, control and data are captured at w_start and stay stable from SETUP to completion. PENABLE only follows SETUP, PPROT is 0, and PREADY comes at least 1 cycle after ACCESS. No RTL-side protocol error is visible. The images, labels, logits and latency (252 k cycles, below 1 M) all passed. Fix: in mon_main, skip the APB checks while reset is asserted (i_rst_n_core !== 1). Also treat the first cycle after reset, or the reset assertion edge, as a fresh start: set m_apb_psel, m_apb_pen and m_apb_rdy to 0 and clear m_apb_len. Alternatively, have the test drain the APB (wait until psel has been low for a few cycles) before the first dmem_rd. The checker fix in tb_top.sv is preferred, because ERR-006 makes reset during an APB transfer legal.",
+    "blocking": true,
+    "default_assumption": "Keep the spec as written and treat the failing side as the bug.",
+    "kind": "design_choice",
+    "options": []
+  },
+  {
+    "id": "SIM6",
+    "question": "Test TC-057: The firmware passes: 100 images, max latency 252,418 cycles, and no halt, label or logit mismatch was reported. Only mon_check_all() fails, on tb_apb_viol_cnt. m_apb_master matches REQ-028 / B5: PSEL is high from SETUP to ACCESS, PENABLE only in ACCESS, and PPROT is 0. PADDR, PWDATA, PSTRB and PWRITE are captured at w_start and held until completion. The failure is in the monitor in tb_top.sv, which ignores i_rst_n_core. TC-057 asserts reset between images (host_begin/rst_assert) right after o_sts_done rises, while firmware may still be running MMIO accesses (UART busy poll and send). An asynchronous reset aborts an in-flight APB transfer and drops PSEL/PENABLE with no PREADY. REQ-044 and ERR-006 say a reset aborts an in-flight APB transfer, so that is legal. The monitor then raises \"PSEL dropped before completion\" at line 1041 (and possibly the stability check). Fix in tb_top.sv, mon_main APB section (lines ~1039-1048): skip the APB checks and clear the history (m_apb_psel, m_apb_pen, m_apb_rdy, m_apb_len) while i_rst_n_core is not 1 or on the cycle reset asserts. Alternatively, use the internal reset (the rst_sync output) to qualify the checks. Do not change the RTL. I have not seen which violation fired because the log has no per-violation detail, so add a debug $display for the failing sub-check on the first hit to confirm. If a violation still fires with no reset in progress, re-triage it as an RTL issue.",
+    "blocking": true,
+    "default_assumption": "Keep the spec as written and treat the failing side as the bug.",
+    "kind": "design_choice",
+    "options": []
+  }
+]

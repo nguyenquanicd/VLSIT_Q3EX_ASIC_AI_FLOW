@@ -1,0 +1,27 @@
+{
+  "round": 5,
+  "failures": [
+    {
+      "id": "TC-057",
+      "name": "mnist_100_images_latency",
+      "note": "APB protocol violation (SETUP/ACCESS order, stability, PPROT)",
+      "log": "build/sim/tb/run_TC-057.log",
+      "reqs": [
+        "REQ-014",
+        "REQ-064"
+      ],
+      "passed": null
+    }
+  ],
+  "verdicts": [
+    {
+      "id": "TC-057",
+      "verdict": "tb_bug",
+      "module": "top",
+      "summary": "The earlier fix worked: the log shows the golden vectors found, 100 images run, latency about 252k cycles (below 1M), and no label, logit or halt failure. The only failing check is the always-on APB monitor (`tb_apb_viol_cnt`, `mon_main` in tb_top.sv around lines 1038-1048). TC-057 resets the DUT after every image (`host_begin()` via `dmem_rd`). The firmware writes `sts.done` and only then sends the UART byte with MMIO accesses, so a reset can hit an APB transfer in flight. The monitor does not look at `i_rst_n_core`. Async reset drops PSEL, PENABLE and the registered `reg_paddr`/`pwdata`/`pstrb` mid-transfer. On the next clock the monitor sees `m_apb_psel && a_inflight_prev && !a_psel`, which it counts as 'PSEL dropped before completion', and possibly a stability mismatch. Spec ERR-006 and REQ-044 say a reset aborts an in-flight APB transfer, so this is legal. `m_apb_master` already matches the spec: PSEL from SETUP through ACCESS, PENABLE in ACCESS only, address and data captured at start, PPROT 0, one IDLE cycle between transfers. Nothing in the RTL breaks B5 or B7. Fix in tb_top.sv `mon_main`: skip the APB protocol checks (violation counters, stability, SETUP/ACCESS order, PSEL-drop) when `i_rst_n_core !== 1'b1`. Also clear the previous-cycle APB tracking (`m_apb_psel`, `m_apb_pen`, `m_apb_rdy`, `m_apb_len`) while reset is low and in the first cycle after it. Then the aborted transfer is not scored as a protocol violation. Keep the checks active whenever reset is released.",
+      "request": "In tb_top.sv, mon_main, APB protocol block (about lines 1038-1048): gate the violation checks with i_rst_n_core === 1'b1 (and not the cycle reset was just asserted). While reset is low, set m_apb_psel = 0, m_apb_pen = 0, m_apb_rdy = 0 and m_apb_len = 0 so that an abort of an in-flight transfer by reset (ERR-006, REQ-044) is not counted as 'PSEL dropped before completion', 'stability' or 'SETUP/ACCESS order'. Keep all checks active when reset is released. Do not change the RTL.",
+      "decision": "",
+      "options": []
+    }
+  ]
+}

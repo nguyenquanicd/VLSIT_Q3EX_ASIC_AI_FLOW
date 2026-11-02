@@ -1,0 +1,74 @@
+{
+  "part": "10AX115N2F40E2LG",
+  "template": "arria10",
+  "top": "m_soc_top",
+  "tool": "Quartus Prime 25.1.0 Pro",
+  "stage": "post-synthesis",
+  "clocks": [
+    {
+      "name": "i_clk_core",
+      "period_ns": 5.0,
+      "freq_mhz": 200.0
+    }
+  ],
+  "utilization": {
+    "lut": {
+      "used": 8690,
+      "available": 427200,
+      "pct": 2.0,
+      "label": "ALMs"
+    },
+    "ff": {
+      "used": 6646,
+      "available": null,
+      "pct": null,
+      "label": "registers"
+    },
+    "dsp": {
+      "used": 10,
+      "available": null,
+      "pct": null,
+      "label": "DSP blocks"
+    },
+    "mem_bits": {
+      "used": 2359296,
+      "available": null,
+      "pct": null,
+      "label": "block memory bits"
+    },
+    "io": {
+      "used": 114,
+      "available": null,
+      "pct": null,
+      "label": "pins"
+    }
+  },
+  "timing": {
+    "wns_ns": 0.416,
+    "whs_ns": -0.5,
+    "tns_ns": 0.0,
+    "fmax_mhz": 218.15,
+    "met": true
+  },
+  "critical_path": {
+    "slack_ns": 0.416,
+    "source": "u_cpu_top|u_mem_wb_reg|reg_rd_idx[3]",
+    "destination": "u_cpu_top|u_ex_mem_reg|reg_alu_result[31]",
+    "logic_levels": 6,
+    "data_path_ns": 4.753
+  },
+  "unconstrained": {},
+  "targets": {},
+  "verdict": {
+    "timing": "pass",
+    "hold": "not judged (post-synthesis)",
+    "utilization": "n/a",
+    "over_budget": {},
+    "plausibility": "pass",
+    "judgment": {
+      "summary": "nothing points at removed logic (no storage removed, the RTL's memories are there)",
+      "by": "code"
+    },
+    "overall": "pass"
+  }
+}

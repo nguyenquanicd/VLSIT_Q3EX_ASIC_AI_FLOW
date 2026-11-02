@@ -1,0 +1,185 @@
+{
+  "has_registers": true,
+  "module_name": "m_soc_csr",
+  "parent": "m_soc_top",
+  "addr_width": 16,
+  "data_width": 32,
+  "asynchronous": false,
+  "registers": [
+    {
+      "name": "ctrl",
+      "offset": 0,
+      "description": "Control register",
+      "fields": [
+        {
+          "name": "reserved",
+          "msb": 31,
+          "lsb": 1,
+          "type": "ro",
+          "reset": 0,
+          "description": "Reserved. Read-as-zero, write ignored."
+        },
+        {
+          "name": "start",
+          "msb": 0,
+          "lsb": 0,
+          "type": "rwi",
+          "reset": 0,
+          "description": "Start inference; set by i_start_req (hardware write) or firmware, cleared by firmware"
+        }
+      ]
+    },
+    {
+      "name": "sts",
+      "offset": 4,
+      "description": "Status register",
+      "fields": [
+        {
+          "name": "reserved",
+          "msb": 31,
+          "lsb": 3,
+          "type": "ro",
+          "reset": 0,
+          "description": "Reserved. Read-as-zero, write ignored."
+        },
+        {
+          "name": "err",
+          "msb": 2,
+          "lsb": 2,
+          "type": "w1c",
+          "reset": 0,
+          "description": "Error flag; set by an illegal instruction or the PSLVERR pulse, cleared by writing 1"
+        },
+        {
+          "name": "done",
+          "msb": 1,
+          "lsb": 1,
+          "type": "rw",
+          "reset": 0,
+          "description": "Inference done; set by firmware, drives o_sts_done"
+        },
+        {
+          "name": "busy",
+          "msb": 0,
+          "lsb": 0,
+          "type": "rw",
+          "reset": 0,
+          "description": "Inference running; set and cleared by firmware"
+        }
+      ]
+    },
+    {
+      "name": "result",
+      "offset": 8,
+      "description": "Inference result",
+      "fields": [
+        {
+          "name": "reserved",
+          "msb": 31,
+          "lsb": 4,
+          "type": "ro",
+          "reset": 0,
+          "description": "Reserved. Read-as-zero, write ignored."
+        },
+        {
+          "name": "label",
+          "msb": 3,
+          "lsb": 0,
+          "type": "rw",
+          "reset": 0,
+          "description": "Predicted digit 0-9, written by firmware, drives o_result_label"
+        }
+      ]
+    },
+    {
+      "name": "cycles",
+      "offset": 12,
+      "description": "Cycle counter",
+      "fields": [
+        {
+          "name": "cnt",
+          "msb": 31,
+          "lsb": 0,
+          "type": "ro",
+          "reset": 0,
+          "description": "Cycles from vector-instruction start to done, driven by m_vpu_perf"
+        }
+      ]
+    },
+    {
+      "name": "uart_tx",
+      "offset": 16,
+      "description": "UART transmit control",
+      "fields": [
+        {
+          "name": "reserved",
+          "msb": 31,
+          "lsb": 10,
+          "type": "ro",
+          "reset": 0,
+          "description": "Reserved. Read-as-zero, write ignored."
+        },
+        {
+          "name": "busy",
+          "msb": 9,
+          "lsb": 9,
+          "type": "ro",
+          "reset": 0,
+          "description": "1 while a byte is being transmitted"
+        },
+        {
+          "name": "send",
+          "msb": 8,
+          "lsb": 8,
+          "type": "rwi",
+          "reset": 0,
+          "description": "Write 1 to send; m_uart clears it when it takes the byte"
+        },
+        {
+          "name": "data",
+          "msb": 7,
+          "lsb": 0,
+          "type": "rw",
+          "reset": 0,
+          "description": "Byte to transmit"
+        }
+      ]
+    },
+    {
+      "name": "uart_cfg",
+      "offset": 20,
+      "description": "UART configuration",
+      "fields": [
+        {
+          "name": "reserved",
+          "msb": 31,
+          "lsb": 16,
+          "type": "ro",
+          "reset": 0,
+          "description": "Reserved. Read-as-zero, write ignored."
+        },
+        {
+          "name": "baud_div",
+          "msb": 15,
+          "lsb": 0,
+          "type": "rw",
+          "reset": 1736,
+          "description": "Baud divisor in i_clk_core cycles per bit; provisional reset 0x06C8 (115200 baud at 200 MHz)"
+        }
+      ]
+    }
+  ],
+  "req_ids": [
+    "REQ-012",
+    "REQ-013",
+    "REQ-017",
+    "REQ-024",
+    "REQ-026",
+    "REQ-027",
+    "REQ-044",
+    "REQ-052",
+    "REQ-055",
+    "REQ-063"
+  ],
+  "summary": "The register map is unchanged. The spec changes (REQ-084 to REQ-087 and wording refinements) did not alter any register, offset, field, type or reset value. m_soc_csr is a single-clock APB4 slave (Asynchronous = 0) with six registers at the ASM-014 interim offsets: ctrl 0x00, sts 0x04, result 0x08, cycles 0x0C, uart_tx 0x10, uart_cfg 0x14. Types: ctrl.start rwi; sts.busy and sts.done rw (firmware-written, no hardware writer); sts.err w1c; result.label rw; cycles.cnt ro; uart_tx.data rw; uart_tx.send rwi (m_uart clears it); uart_tx.busy ro; uart_cfg.baud_div rw, reset 0x06C8 (1736). csr_check accepts the map. Integration: the two hardware sources of sts.err (illegal instruction and the m_apb_master o_sts_err_set pulse) must be ORed outside the CSR into the single i_hw_we_sts_err port, with i_hw_wdata_sts_err tied to 1. The generated port names differ from REF-003 (ASM-006)."
+}
