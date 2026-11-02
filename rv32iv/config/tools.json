@@ -160,10 +160,6 @@
       },
       "description": "Static clock domain crossing analysis with VC Static (check_cdc, report_violations -app CDC).",
       "timeout_s": 3600,
-      "env": {
-        "VC_STATIC_HOME": "<vc_static install>",
-        "SNPSLMD_LICENSE_FILE": "<port>@<license-server>"
-      },
       "modules": [
         "synopsys/vc_static/X-2025.06"
       ]
@@ -180,10 +176,6 @@
       },
       "description": "Static reset domain crossing analysis with VC Static (check_rdc, report_rdc).",
       "timeout_s": 3600,
-      "env": {
-        "VC_STATIC_HOME": "<vc_static install>",
-        "SNPSLMD_LICENSE_FILE": "<port>@<license-server>"
-      },
       "modules": [
         "synopsys/vc_static/X-2025.06"
       ]
@@ -228,19 +220,13 @@
     "iss": {
       "cmd": "spike {args}",
       "parse": "generic",
-      "env": {
-        "PATH": "/usr/bin:/bin"
-      },
       "description": "Spike, the reference ISA simulator (expected results)"
     },
     "sw_build": {
       "cmd": "make -C {src} -j8 PROG_DIR={out} RISCV_PREFIX={riscv_prefix} SPIKE={spike}",
       "parse": "generic",
       "timeout_s": 3600,
-      "description": "build the test programs of src/sw (the Makefile the prepare step writes): GCC images and Spike reference results into PROG_DIR",
-      "env": {
-        "PATH": "/usr/bin:/bin"
-      }
+      "description": "build the test programs of src/sw (the Makefile the prepare step writes): GCC images and Spike reference results into PROG_DIR"
     },
     "fpga_quartus_pro": {
       "cmd": "quartus_sh -t {script}",
